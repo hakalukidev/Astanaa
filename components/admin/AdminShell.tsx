@@ -3,14 +3,16 @@ import type { ReactNode } from "react";
 
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
 import AdminSidebarNav from "@/components/admin/AdminSidebarNav";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { getCurrentAdmin } from "@/lib/admin-auth";
 
 type AdminShellProps = {
   children: ReactNode;
 };
 
-export default function AdminShell({ children }: AdminShellProps) {
-  if (!isAdminAuthenticated()) {
+export default async function AdminShell({ children }: AdminShellProps) {
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
     redirect("/admin/login");
   }
 
@@ -32,9 +34,12 @@ export default function AdminShell({ children }: AdminShellProps) {
               </div>
             </div>
 
-            <AdminSidebarNav />
+            <AdminSidebarNav isSuperAdmin={admin.role === "super_admin"} />
 
-            <div className="mt-auto">
+            <div className="mt-auto space-y-3">
+              <p className="truncate text-xs text-blue-400" title={admin.email}>
+                Signed in as {admin.email}
+              </p>
               <AdminLogoutButton />
             </div>
           </div>

@@ -43,11 +43,12 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center shrink-0">
             <Image
-              src="/Mlogo.png"
-              alt="Muaz Technology"
+              src="/logo.svg"
+              alt="Astanaa"
               width={60}
               height={35}
               className="object-contain"
+              unoptimized
               priority
             />
             <div className="flex flex-col ml-2">
@@ -116,11 +117,12 @@ export default function Navbar() {
           {/* Logo - Left for mobile */}
           <Link href="/" className="flex items-center shrink-0">
             <Image
-              src="/Mlogo.png"
-              alt="Muaz Technology"
+              src="/logo.svg"
+              alt="Astanaa"
               width={50}
               height={30}
               className="object-contain"
+              unoptimized
               priority
             />
             <div className="flex flex-col ml-1">

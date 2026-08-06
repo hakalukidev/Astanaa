@@ -1,4 +1,5 @@
 import { db } from '@/lib/firebase';
+import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { normalizeBlogPost } from '@/lib/blog-type';
 import { deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,6 +15,10 @@ export async function GET(
   { params }: BlogRouteContext
 ) {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!db) {
       return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
     }
@@ -36,6 +41,10 @@ export async function PUT(
   { params }: BlogRouteContext
 ) {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!db) {
       return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
     }
@@ -59,6 +68,10 @@ export async function DELETE(
   { params }: BlogRouteContext
 ) {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!db) {
       return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
     }

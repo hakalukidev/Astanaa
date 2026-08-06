@@ -60,3 +60,6 @@ Thumbs.db
 
 # stray local backup files
 package.json.backup
+
+# lockfile (large diffs on every dependency change; not tracked here)
+package-lock.json

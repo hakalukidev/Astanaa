@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { isAdminAuthenticated } from '@/lib/admin-auth';
+
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!CLOUD_NAME || !UPLOAD_PRESET) {
       return NextResponse.json({ error: 'Cloudinary not configured' }, { status: 500 });
     }

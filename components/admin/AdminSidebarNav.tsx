@@ -1,7 +1,7 @@
 // components/admin/AdminSidebarNav.tsx
 "use client";
 
-import { FileText, FolderTree, Image, LayoutDashboard, PackagePlus } from "lucide-react";
+import { FileText, FolderTree, Image, LayoutDashboard, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,13 +30,21 @@ const navigationItems = [
   },
 ];
 
-export default function AdminSidebarNav() {
+type AdminSidebarNavProps = {
+  isSuperAdmin?: boolean;
+};
+
+export default function AdminSidebarNav({ isSuperAdmin }: AdminSidebarNavProps) {
   const pathname = usePathname();
   const currentPathname = pathname ?? "";
 
+  const items = isSuperAdmin
+    ? [...navigationItems, { href: "/admin/users", label: "Admin Users", icon: ShieldCheck }]
+    : navigationItems;
+
   return (
     <nav className="space-y-2">
-      {navigationItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const isActive =
           currentPathname === item.href ||

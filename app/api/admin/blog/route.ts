@@ -1,5 +1,6 @@
 import { normalizeBlogPost } from '@/lib/blog-type';
 import { db } from '@/lib/firebase';
+import { isAdminAuthenticated } from '@/lib/admin-auth';
 import { collection, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -14,6 +15,10 @@ function slugify(input: string) {
 // GET - Fetch all blog posts
 export async function GET() {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!db) {
       return NextResponse.json(
         { error: 'Firestore not initialized' },
@@ -39,6 +44,10 @@ export async function GET() {
 // POST - Create new blog post
 export async function POST(request: NextRequest) {
   try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!db) {
       return NextResponse.json(
         { error: 'Firestore not initialized' },

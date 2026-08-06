@@ -1,6 +1,7 @@
 // components/admin/AdminLoginForm.tsx
 "use client";
 
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -8,10 +9,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 export default function AdminLoginForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -23,25 +25,43 @@ export default function AdminLoginForm() {
     setIsSubmitting(true);
 
     try {
+      const auth = getFirebaseAuth();
+
+      if (!auth) {
+        setErrorMessage("Sign-in is not configured right now.");
+        return;
+      }
+
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await credential.user.getIdToken();
+
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ idToken }),
       });
 
-      const payload = (await response.json()) as { message?: string };
+      const responsePayload = (await response.json()) as { message?: string };
 
       if (!response.ok) {
-        setErrorMessage(payload.message ?? "Unable to log in.");
+        setErrorMessage(responsePayload.message ?? "Unable to log in.");
         return;
       }
 
       router.replace("/admin/products");
       router.refresh();
-    } catch {
-      setErrorMessage("Unable to reach the login service right now.");
+    } catch (error) {
+      const code = (error as { code?: string })?.code ?? "";
+
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        setErrorMessage("Invalid email or password.");
+      } else if (code === "auth/too-many-requests") {
+        setErrorMessage("Too many attempts. Please wait a moment and try again.");
+      } else {
+        setErrorMessage("Unable to reach the login service right now.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -56,22 +76,23 @@ export default function AdminLoginForm() {
         <div className="space-y-1">
           <CardTitle className="text-2xl text-blue-950">Admin login</CardTitle>
           <CardDescription>
-            Sign in with your admin credentials to manage the catalog.
+            Sign in with your admin email to manage the catalog.
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-700" htmlFor="admin-username">
-              Username
+            <label className="text-sm font-medium text-blue-700" htmlFor="admin-email">
+              Email
             </label>
             <Input
-              id="admin-username"
+              id="admin-email"
+              type="email"
               autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Enter your username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
               required
             />
           </div>

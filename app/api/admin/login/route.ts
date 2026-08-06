@@ -1,34 +1,22 @@
 import { NextResponse } from "next/server";
 
-import {
-  areAdminCredentialsConfigured,
-  setAdminSession,
-  validateAdminLogin,
-} from "@/lib/admin-auth";
+import { createAdminSessionCookie, setAdminSession } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
-  if (!areAdminCredentialsConfigured()) {
-    return NextResponse.json(
-      { message: "Admin credentials are missing in .env.local." },
-      { status: 500 }
-    );
+  const payload = (await request.json().catch(() => null)) as { idToken?: string } | null;
+  const idToken = payload?.idToken;
+
+  if (!idToken) {
+    return NextResponse.json({ message: "Missing sign-in token." }, { status: 400 });
   }
 
-  const payload = (await request.json().catch(() => null)) as
-    | { username?: string; password?: string }
-    | null;
+  const result = await createAdminSessionCookie(idToken);
 
-  const username = payload?.username ?? "";
-  const password = payload?.password ?? "";
-
-  if (!validateAdminLogin(username, password)) {
-    return NextResponse.json(
-      { message: "Invalid username or password." },
-      { status: 401 }
-    );
+  if ("error" in result) {
+    return NextResponse.json({ message: result.error }, { status: result.status });
   }
 
-  const response = NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true, role: result.session.role });
 
-  return setAdminSession(response);
+  return setAdminSession(response, result.sessionCookie);
 }

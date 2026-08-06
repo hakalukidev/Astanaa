@@ -1,4 +1,5 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { type Auth, getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -27,6 +28,24 @@ export const firebaseApp = hasFirebaseConfig
   : null;
 
 export const db = firebaseApp ? getFirestore(firebaseApp) : null;
+
+let cachedAuth: Auth | null = null;
+
+/**
+ * Lazily creates the Firebase Auth client. Lazy because getAuth() touches
+ * browser-only APIs and this module can be imported on the server too.
+ */
+export function getFirebaseAuth(): Auth | null {
+  if (!firebaseApp) {
+    return null;
+  }
+
+  if (!cachedAuth) {
+    cachedAuth = getAuth(firebaseApp);
+  }
+
+  return cachedAuth;
+}
 
 export function isFirebaseReady() {
   return Boolean(db);
