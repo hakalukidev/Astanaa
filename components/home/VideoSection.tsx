@@ -1,6 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 
+import { useLanguage } from '@/contexts/LanguageContext';
+import { homeTranslations } from '@/lib/home-translations';
+
 export default function VideoSection() {
+  const { language } = useLanguage();
+  const t = homeTranslations[language].video;
+
   return (
     <section className="py-14 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -19,17 +27,13 @@ export default function VideoSection() {
 
           <div className="w-full lg:flex-1">
             <span className="inline-block border border-blue-600 px-3 py-1 text-xs font-bold tracking-widest text-blue-600">
-              Upgrade your workshop performance
+              {t.tag}
             </span>
             <h2 className="mt-4 max-w-2xl text-3xl font-black leading-snug text-gray-900 sm:text-4xl">
-              Need top-quality garage equipment and expert installation?
+              {t.title}
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-600 sm:text-base">
-              Muaz Technology has you covered! We supply, install, and provide training on a wide
-              range of garage equipment. With our skilled team and commitment to customer
-              satisfaction, we ensure that your garage is equipped with the best tools and that
-              your staff is fully trained to use them efficiently. Whether you&apos;re upgrading or
-              starting from scratch,
+              {t.description}
             </p>
              {/* 🔥 Fixed: Proper button group with flex and gap */}
             <div className="mt-6 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -37,7 +41,7 @@ export default function VideoSection() {
                 href="/products"
                 className="inline-flex items-center justify-center bg-blue-700 px-5 py-3 text-xs sm:text-sm font-bold tracking-wide text-white transition hover:bg-blue-800 sm:px-6"
               >
-                GARAGE EQUIPMENTS
+                {t.button}
               </Link>
               </div>
           </div>

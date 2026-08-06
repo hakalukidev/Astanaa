@@ -1,8 +1,28 @@
 'use client';
 
-import { Home, Newspaper, Phone, Settings } from 'lucide-react';
+import { Globe, Home, Newspaper, Phone, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { FaFacebook, FaYoutube } from 'react-icons/fa';
+
+import { useLanguage } from '@/contexts/LanguageContext';
+import { homeTranslations } from '@/lib/home-translations';
+
+function LanguageToggle({ compact = false }: { compact?: boolean }) {
+  const { language, toggleLanguage } = useLanguage();
+  const label = homeTranslations[language].languageToggleLabel;
+
+  return (
+    <button
+      type="button"
+      onClick={toggleLanguage}
+      className={`flex items-center gap-1 rounded border border-blue-400 hover:bg-blue-500 transition font-semibold whitespace-nowrap ${
+        compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1 text-xs lg:text-sm'
+      }`}
+    >
+      <Globe size={compact ? 12 : 14} /> {label}
+    </button>
+  );
+}
 
 export default function TopBar() {
   return (
@@ -28,11 +48,12 @@ export default function TopBar() {
               <Phone size={14} /> CONTACT US
             </Link>
             <div className="flex items-center gap-2 lg:gap-3 border-l border-blue-400 pl-3 lg:pl-4">
-              <a href="https://www.facebook.com/muaztechnology" target="_blank" rel="noopener noreferrer" 
+              <a href="https://www.facebook.com/muaztechnology" target="_blank" rel="noopener noreferrer"
               className="hover:text-blue-200 transition"><FaFacebook size={14} /></a>
-              <a href="https://youtube.com/@muaztechnology3326" target="_blank" rel="noopener noreferrer" 
+              <a href="https://youtube.com/@muaztechnology3326" target="_blank" rel="noopener noreferrer"
               className="hover:text-blue-200 transition"><FaYoutube size={14} /></a>
             </div>
+            <LanguageToggle />
           </div>
         </div>
       </div>
@@ -54,11 +75,12 @@ export default function TopBar() {
             <Phone size={14} /> CONTACT US
           </Link>
           <div className="flex items-center gap-2 border-l border-blue-400 pl-3">
-            <a href="https://www.facebook.com/muaztechnology" target="_blank" rel="noopener noreferrer" 
+            <a href="https://www.facebook.com/muaztechnology" target="_blank" rel="noopener noreferrer"
             className="hover:text-blue-200 transition"><FaFacebook size={12} /></a>
-            <a href="https://youtube.com/@muaztechnology3326" target="_blank" rel="noopener noreferrer" 
+            <a href="https://youtube.com/@muaztechnology3326" target="_blank" rel="noopener noreferrer"
             className="hover:text-blue-200 transition"><FaYoutube size={12} /></a>
           </div>
+          <LanguageToggle compact />
         </div>
       </div>
     </>

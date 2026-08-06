@@ -1,10 +1,14 @@
+"use client";
+
 import Link from "next/link";
 
 import ProductGridCard from "@/components/products/ProductGridCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   filterItemsByManagedCategory,
   type Category,
 } from "@/lib/categories";
+import { homeTranslations } from "@/lib/home-translations";
 import { type Product } from "@/lib/products";
 
 type ProductShowcaseSectionsProps = {
@@ -67,6 +71,9 @@ export default function ProductShowcaseSections({
   categories,
   products,
 }: ProductShowcaseSectionsProps) {
+  const { language } = useLanguage();
+  const t = homeTranslations[language].showcase;
+
   const latestProducts = products.slice(0, 4);
   const categorySections = categories
     .map((category) => ({
@@ -84,11 +91,11 @@ export default function ProductShowcaseSections({
       {latestProducts.length > 0 ? (
         <ProductSection
           actionHref="/products"
-          actionLabel="Browse catalog"
-          description="A compact lineup of our latest workshop equipment, presented in a cleaner horizontal layout for faster scanning."
-          eyebrow="New arrivals"
+          actionLabel={t.browseCatalog}
+          description={t.latestDescription}
+          eyebrow={t.latestEyebrow}
           products={latestProducts}
-          title="Latest Products"
+          title={t.latestTitle}
         />
       ) : null}
 
@@ -96,13 +103,12 @@ export default function ProductShowcaseSections({
         <ProductSection
           key={section.category.id}
           actionHref={`/products?category=${encodeURIComponent(section.category.name)}`}
-          actionLabel="Explore category"
-          description={
-            section.category.subcategories.length > 0
-              ? `Browse products from ${section.category.name} and its related subcategories.`
-              : `Browse a focused selection from our ${section.category.name} range.`
-          }
-          eyebrow="Shop by category"
+          actionLabel={t.exploreCategory}
+          description={(section.category.subcategories.length > 0
+            ? t.categoryDescriptionWithSubcategories
+            : t.categoryDescriptionNoSubcategories
+          ).replace("{category}", section.category.name)}
+          eyebrow={t.categoryEyebrow}
           products={section.products}
           title={section.category.name}
         />

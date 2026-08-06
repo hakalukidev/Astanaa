@@ -1,5 +1,6 @@
 import AppShell from '@/components/layout/AppShell'
 import QueryProvider from '@/components/providers/QueryProvider'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 // @ts-ignore - global stylesheet import is handled by Next.js
@@ -37,8 +38,10 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <QueryProvider>
-          <FacebookPixel />
-          <AppShell>{children}</AppShell>
+          <LanguageProvider>
+            <FacebookPixel />
+            <AppShell>{children}</AppShell>
+          </LanguageProvider>
         </QueryProvider>
       </body>
     </html>
