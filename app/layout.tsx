@@ -1,5 +1,6 @@
 import AppShell from '@/components/layout/AppShell'
 import QueryProvider from '@/components/providers/QueryProvider'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
@@ -10,8 +11,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Muaz Technology - Industrial Machinery & Automobile Equipment',
-  description: 'Trusted supplier of industrial machinery and automobile equipment in Bangladesh',
+  title: 'Astanaa.com - Buy & Sell Apartments in Bangladesh',
+  description: 'Post your apartment for sale or rent, and find your next home on Astanaa.com.',
   icons: {
     icon: '/icon.png',
   },
@@ -39,8 +40,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <QueryProvider>
           <LanguageProvider>
-            <FacebookPixel />
-            <AppShell>{children}</AppShell>
+            <AuthProvider>
+              <FacebookPixel />
+              <AppShell>{children}</AppShell>
+            </AuthProvider>
           </LanguageProvider>
         </QueryProvider>
       </body>

@@ -13,7 +13,7 @@ export default async function AdminLoginPage() {
       <div className="mx-auto grid min-h-[calc(100vh-6rem)] max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_minmax(360px,420px)]">
         <section className="space-y-6">
           <span className="inline-flex rounded-full border border-slate-300 bg-white/80 px-4 py-1 text-sm font-medium text-slate-700 shadow-sm backdrop-blur">
-            Muaz Technology Admin
+            Astanaa.com Admin
           </span>
           <div className="space-y-4">
             <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">

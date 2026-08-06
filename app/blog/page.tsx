@@ -55,7 +55,7 @@ export default function BlogPage() {
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Our Blog</h1>
           <div className="w-20 h-1 bg-blue-600 mx-auto mb-4 rounded-full"></div>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Latest news, updates, and insights from Muaz Technology
+            Latest news, updates, and insights from Astanaa.com
           </p>
         </div>
 

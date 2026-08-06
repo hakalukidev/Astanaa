@@ -26,15 +26,18 @@ export default async function AdminShell({ children }: AdminShellProps) {
                 Admin Panel
               </span>
               <div>
-                <h1 className="text-2xl font-semibold text-white">Muaz Admin</h1>
+                <h1 className="text-2xl font-semibold text-white">Astanaa Admin</h1>
                 <p className="mt-2 text-sm leading-6 text-blue-300">
-                  Manage your product catalog, pricing, images, and featured
-                  items from one place.
+                  {admin.role === "moderator"
+                    ? "Review and moderate listings posted by clients and promoters."
+                    : admin.role === "promoter"
+                      ? "Post apartment ads and track their approval status."
+                      : "Manage listings, the legacy catalog, and admin access from one place."}
                 </p>
               </div>
             </div>
 
-            <AdminSidebarNav isSuperAdmin={admin.role === "super_admin"} />
+            <AdminSidebarNav role={admin.role} />
 
             <div className="mt-auto space-y-3">
               <p className="truncate text-xs text-blue-400" title={admin.email}>

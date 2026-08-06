@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ADMINS_COLLECTION, getCurrentAdmin } from "@/lib/admin-auth";
+import { ADMINS_COLLECTION, getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+
+const VALID_ROLES: AdminRole[] = ["admin", "super_admin", "moderator", "promoter"];
 
 type RouteContext = {
   params: { uid: string };
@@ -29,10 +31,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const payload = (await request.json().catch(() => null)) as { role?: string } | null;
-  const role = payload?.role;
+  const role = payload?.role as AdminRole | undefined;
 
-  if (role !== "admin" && role !== "super_admin") {
-    return NextResponse.json({ error: "Role must be 'admin' or 'super_admin'." }, { status: 400 });
+  if (!role || !VALID_ROLES.includes(role)) {
+    return NextResponse.json(
+      { error: "Role must be one of: admin, super_admin, moderator, promoter." },
+      { status: 400 }
+    );
   }
 
   const targetRef = getAdminDb().collection(ADMINS_COLLECTION).doc(params.uid);
@@ -44,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const isDemotingLastSuperAdmin =
     targetDoc.data()?.role === "super_admin" &&
-    role === "admin" &&
+    role !== "super_admin" &&
     (await countSuperAdmins(params.uid)) === 0;
 
   if (isDemotingLastSuperAdmin) {

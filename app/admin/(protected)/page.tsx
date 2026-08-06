@@ -1,5 +1,17 @@
 import { redirect } from "next/navigation";
 
-export default function AdminPage() {
+import { getCurrentAdmin } from "@/lib/admin-auth";
+
+export default async function AdminPage() {
+  const admin = await getCurrentAdmin();
+
+  if (admin?.role === "promoter") {
+    redirect("/admin/my-posts");
+  }
+
+  if (admin?.role === "moderator") {
+    redirect("/admin/moderation");
+  }
+
   redirect("/admin/products");
 }

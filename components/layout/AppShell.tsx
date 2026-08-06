@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import Footer from "@/components/layout/Footer";
-import Navbar from "@/components/layout/Navbar";
 import TopBar from "@/components/layout/TopBar";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -18,12 +17,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <>
-      {!isAdminRoute && (
-        <>
-          <TopBar />
-          <Navbar />
-        </>
-      )}
+      {!isAdminRoute && <TopBar />}
       {children}
       {!isAdminRoute && <Footer />}
       <Toaster />

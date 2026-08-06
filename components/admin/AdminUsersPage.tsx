@@ -27,13 +27,27 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-type AdminRole = "admin" | "super_admin";
+type AdminRole = "admin" | "super_admin" | "moderator" | "promoter";
 
 type AdminUser = {
   uid: string;
   email: string;
   role: AdminRole;
   createdAt: string | null;
+};
+
+const ROLE_LABELS: Record<AdminRole, string> = {
+  super_admin: "Super admin",
+  admin: "Admin",
+  moderator: "Moderator",
+  promoter: "Promoter",
+};
+
+const ROLE_BADGE_STYLES: Record<AdminRole, string> = {
+  super_admin: "bg-amber-100 text-amber-800",
+  admin: "bg-blue-100 text-blue-700",
+  moderator: "bg-purple-100 text-purple-700",
+  promoter: "bg-emerald-100 text-emerald-700",
 };
 
 const usersQueryKey = ["admin-users"];
@@ -160,12 +174,13 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
     createMutation.mutate();
   }
 
-  function handleRoleToggle(user: AdminUser) {
+  function handleRoleChange(user: AdminUser, nextRole: AdminRole) {
+    if (nextRole === user.role) {
+      return;
+    }
+
     setPendingUid(user.uid);
-    roleMutation.mutate({
-      uid: user.uid,
-      nextRole: user.role === "super_admin" ? "admin" : "super_admin",
-    });
+    roleMutation.mutate({ uid: user.uid, nextRole });
   }
 
   function handleDelete(user: AdminUser) {
@@ -186,8 +201,10 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
           <div className="space-y-1">
             <CardTitle className="text-blue-950">Admin users</CardTitle>
             <CardDescription>
-              Create, promote, or remove access to this admin panel. Super admins can
-              manage other admin users; regular admins can only manage the catalog.
+              Create, change roles, or remove access to this admin panel. Only super
+              admins can manage other admin users. Admins &amp; super admins manage the
+              catalog and moderate listings; moderators only moderate listings;
+              promoters only post their own listings for approval.
             </CardDescription>
           </div>
           <Button
@@ -243,13 +260,11 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
-                            user.role === "super_admin"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-700"
+                            ROLE_BADGE_STYLES[user.role]
                           )}
                         >
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          {user.role === "super_admin" ? "Super admin" : "Admin"}
+                          {ROLE_LABELS[user.role]}
                         </span>
                       </TableCell>
 
@@ -259,19 +274,24 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
 
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-900"
-                            onClick={() => handleRoleToggle(user)}
-                            disabled={isRowPending}
+                          <select
+                            value={user.role}
+                            onChange={(event) =>
+                              handleRoleChange(user, event.target.value as AdminRole)
+                            }
+                            disabled={isSelf || isRowPending}
+                            className="h-9 rounded-md border border-blue-200 bg-white px-2 text-xs font-medium text-blue-700 disabled:opacity-50"
+                            title={isSelf ? "You cannot change your own role" : "Change role"}
                           >
-                            {isRowPending && roleMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : null}
-                            {user.role === "super_admin" ? "Make admin" : "Make super admin"}
-                          </Button>
+                            {(Object.keys(ROLE_LABELS) as AdminRole[]).map((roleOption) => (
+                              <option key={roleOption} value={roleOption}>
+                                {ROLE_LABELS[roleOption]}
+                              </option>
+                            ))}
+                          </select>
+                          {isRowPending && roleMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : null}
                           <Button
                             type="button"
                             variant="outline"
@@ -339,8 +359,10 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
                 onChange={(event) => setRole(event.target.value as AdminRole)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <option value="admin">Admin — manages the catalog</option>
+                <option value="admin">Admin — manages the catalog &amp; moderates listings</option>
                 <option value="super_admin">Super admin — can also manage admin users</option>
+                <option value="moderator">Moderator — approves/removes listings only</option>
+                <option value="promoter">Promoter — posts listings for approval only</option>
               </select>
             </div>
             {formError ? (

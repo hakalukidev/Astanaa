@@ -1,0 +1,119 @@
+rules_version = '2';
+
+// NOTE: This file only documents the rules needed for the new apartment
+// marketplace collections (listings, users, chats, buyRequests, admins-read).
+// It does not include write rules for the pre-existing collections
+// (products, categories, blog, slides) since those aren't tracked in this
+// repo — merge the `match` blocks below into your existing rules in the
+// Firebase Console (or your existing firestore.rules) rather than replacing
+// everything.
+//
+// Deploy with: firebase deploy --only firestore:rules
+// (requires `firebase init` / a firebase.json pointing at this file first)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function adminDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasAdminAccount() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // admin / super_admin: full catalog control + can activate boosts.
+    function isStaffAdmin() {
+      return hasAdminAccount() &&
+        (adminDoc().data.role == 'super_admin' || adminDoc().data.role == 'admin');
+    }
+
+    // super_admin, admin, and moderator can all approve/reject/remove listings.
+    function canModerateListings() {
+      return hasAdminAccount() && adminDoc().data.role in ['super_admin', 'admin', 'moderator'];
+    }
+
+    // --- admins ------------------------------------------------------------
+    // Only used so a signed-in user can check their own admin role client-side
+    // (e.g. a promoter posting via the public site). Writes go through the
+    // server (Firebase Admin SDK) only — no client write rule here.
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- users -----------------------------------------------------------
+    // Each user can read/write only their own profile document.
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- listings ------------------------------------------------------
+    // Anyone can read active listings; the owner can read their own listing
+    // regardless of status (pending/rejected/sold); staff/moderators can read
+    // everything (needed for the moderation queue).
+    //
+    // New listings always start "pending" — approving/rejecting them is
+    // moderator+ only. The owner can edit their own listing but can't
+    // self-approve (set status to "active") or self-reject, and can't
+    // activate their own boost (that's staff-only, until payment is
+    // verified).
+    match /listings/{listingId} {
+      allow read: if resource.data.status == 'active'
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid)
+        || canModerateListings();
+
+      allow create: if isSignedIn()
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      allow update: if canModerateListings() || (
+        isSignedIn()
+        && resource.data.sellerId == request.auth.uid
+        && (request.resource.data.status == 'pending' || request.resource.data.status == 'sold')
+        && (request.resource.data.boost.status != 'active' || resource.data.boost.status == 'active')
+      );
+
+      allow delete: if canModerateListings()
+        || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+    }
+
+    // --- buyRequests -------------------------------------------------------
+    // The buyer creates the request; buyer and seller can both read it so
+    // the seller sees interest and the buyer can see its status.
+    match /buyRequests/{requestId} {
+      allow read: if isSignedIn() &&
+        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.buyerId == request.auth.uid;
+
+      allow update: if isSignedIn() && resource.data.sellerId == request.auth.uid;
+    }
+
+    // --- chats ---------------------------------------------------------
+    // Only the two participants (buyer + seller) of a chat can read/write
+    // it and its messages.
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+      allow create: if isSignedIn()
+        && request.auth.uid in request.resource.data.participantIds;
+
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+
+        allow create: if isSignedIn()
+          && request.resource.data.senderId == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+      }
+    }
+  }
+}

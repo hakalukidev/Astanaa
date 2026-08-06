@@ -1,0 +1,80 @@
+import { BedDouble, MapPin, Ruler, Zap } from "lucide-react";
+import Link from "next/link";
+
+import {
+  formatListingPrice,
+  getPrimaryListingPhotoUrl,
+  type Listing,
+} from "@/lib/listings";
+
+type ListingCardProps = {
+  listing: Listing;
+};
+
+export default function ListingCard({ listing }: ListingCardProps) {
+  const photoUrl = getPrimaryListingPhotoUrl(listing);
+  const isBoosted = listing.boost.status === "active";
+
+  return (
+    <Link
+      href={`/listings/${listing.id}`}
+      className="group flex w-full max-w-[19rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)] transition duration-300 hover:-translate-y-1 hover:border-green-300 hover:shadow-[0_28px_50px_-32px_rgba(15,23,42,0.75)]"
+    >
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={listing.title}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-300">
+            <BedDouble size={32} />
+          </div>
+        )}
+
+        {isBoosted ? (
+          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+            <Zap size={10} /> Boosted
+          </span>
+        ) : null}
+
+        <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
+          {listing.purpose === "rent" ? "For Rent" : "For Sale"}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-1.5 p-3 text-left">
+        <p className="text-base font-bold text-green-700">
+          {formatListingPrice(listing.price)}
+          {listing.purpose === "rent" ? (
+            <span className="text-xs font-medium text-slate-500"> /month</span>
+          ) : null}
+        </p>
+
+        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
+          {listing.title}
+        </h3>
+
+        <p className="flex items-center gap-1 text-xs text-slate-500">
+          <MapPin size={12} className="shrink-0" />
+          <span className="line-clamp-1">{listing.location}</span>
+        </p>
+
+        <div className="mt-1 flex items-center gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+          {listing.bedrooms ? (
+            <span className="flex items-center gap-1">
+              <BedDouble size={12} /> {listing.bedrooms} Bed
+            </span>
+          ) : null}
+          {listing.areaSqft ? (
+            <span className="flex items-center gap-1">
+              <Ruler size={12} /> {listing.areaSqft} sqft
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  );
+}

@@ -531,7 +531,7 @@ export default function BlogPostEditor({
 
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-blue-600 font-medium text-base line-clamp-1">{formData.title || 'Post title goes here'}</p>
-                  <p className="text-xs text-gray-400 mt-1">muazbd.net/blog/{previewSlug}</p>
+                  <p className="text-xs text-gray-400 mt-1">astanaa.com/blog/{previewSlug}</p>
                   <p className="text-xs text-gray-500 mt-2 line-clamp-2">
                     {formData.subtitle || formData.content.slice(0, 120) || 'Subtitle or excerpt...'}
                   </p>

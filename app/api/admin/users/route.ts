@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMINS_COLLECTION, getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
 import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
 
-const VALID_ROLES: AdminRole[] = ["admin", "super_admin"];
+const VALID_ROLES: AdminRole[] = ["admin", "super_admin", "moderator", "promoter"];
 
 // GET - list every admin panel user. Super admin only.
 export async function GET() {
@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (!role || !VALID_ROLES.includes(role as AdminRole)) {
-    return NextResponse.json({ error: "Role must be 'admin' or 'super_admin'." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Role must be one of: admin, super_admin, moderator, promoter." },
+      { status: 400 }
+    );
   }
 
   const adminAuth = getAdminAuth();

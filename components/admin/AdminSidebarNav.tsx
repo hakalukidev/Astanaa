@@ -1,13 +1,22 @@
 // components/admin/AdminSidebarNav.tsx
 "use client";
 
-import { FileText, FolderTree, Image, LayoutDashboard, ShieldCheck } from "lucide-react";
+import {
+  ClipboardCheck,
+  FileText,
+  FolderTree,
+  Image,
+  LayoutDashboard,
+  Megaphone,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { type AdminRole } from "@/lib/admin-auth";
 import { cn } from "@/lib/utils";
 
-const navigationItems = [
+const catalogItems = [
   {
     href: "/admin/products",
     label: "All Products",
@@ -30,17 +39,41 @@ const navigationItems = [
   },
 ];
 
-type AdminSidebarNavProps = {
-  isSuperAdmin?: boolean;
+const moderationItem = {
+  href: "/admin/moderation",
+  label: "Moderation Queue",
+  icon: ClipboardCheck,
 };
 
-export default function AdminSidebarNav({ isSuperAdmin }: AdminSidebarNavProps) {
+const myPostsItem = {
+  href: "/admin/my-posts",
+  label: "My Posts",
+  icon: Megaphone,
+};
+
+const usersItem = { href: "/admin/users", label: "Admin Users", icon: ShieldCheck };
+
+type AdminSidebarNavProps = {
+  role: AdminRole;
+};
+
+export default function AdminSidebarNav({ role }: AdminSidebarNavProps) {
   const pathname = usePathname();
   const currentPathname = pathname ?? "";
 
-  const items = isSuperAdmin
-    ? [...navigationItems, { href: "/admin/users", label: "Admin Users", icon: ShieldCheck }]
-    : navigationItems;
+  let items: typeof catalogItems;
+
+  if (role === "promoter") {
+    items = [myPostsItem];
+  } else if (role === "moderator") {
+    items = [moderationItem];
+  } else {
+    // admin & super_admin
+    items = [...catalogItems, moderationItem];
+    if (role === "super_admin") {
+      items = [...items, usersItem];
+    }
+  }
 
   return (
     <nav className="space-y-2">

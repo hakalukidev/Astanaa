@@ -15,7 +15,7 @@ type ProductDetailClientProps = {
 export default function ProductDetailClient({
   productId,
 }: ProductDetailClientProps) {
-  const mapUrl = "https://www.google.com/maps/place/Muaz+Technology/@23.719186,90.4094433,17z/data=!4m7!3m6!1s0x3755b93eeb19d727:0xb774586735f37c8b!4b1!8m2!3d23.7184837!4d90.4115032!16s%2Fg%2F11xlnxv_ts?hl=en&entry=ttu&g_ep=EgoyMDI2MDYxMC4wIKXMDSoASAFQAw%3D%3D";
+  const mapUrl = "https://www.google.com/maps/search/?api=1&query=Dhaka%2C+Bangladesh";
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);

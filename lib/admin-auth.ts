@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
@@ -8,7 +9,9 @@ import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-a
 export const ADMIN_SESSION_COOKIE = "astanaa-admin-session";
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-export type AdminRole = "super_admin" | "admin";
+export type AdminRole = "super_admin" | "admin" | "moderator" | "promoter";
+
+const VALID_ADMIN_ROLES: AdminRole[] = ["super_admin", "admin", "moderator", "promoter"];
 
 export type AdminSession = {
   uid: string;
@@ -17,6 +20,16 @@ export type AdminSession = {
 };
 
 export const ADMINS_COLLECTION = "admins";
+
+/** admin & super_admin can manage the whole catalog + moderate listings. */
+export function isStaffAdmin(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}
+
+/** super_admin, admin, and moderator can all approve/reject/remove listings. */
+export function canModerateListings(role: AdminRole) {
+  return role === "super_admin" || role === "admin" || role === "moderator";
+}
 
 export function areAdminCredentialsConfigured() {
   return isFirebaseAdminReady();
@@ -55,7 +68,7 @@ export async function createAdminSessionCookie(
 
   const role = adminDoc.data()?.role as AdminRole | undefined;
 
-  if (role !== "super_admin" && role !== "admin") {
+  if (!role || !VALID_ADMIN_ROLES.includes(role)) {
     return { error: "This account is not authorized for the admin panel.", status: 403 };
   }
 
@@ -128,7 +141,7 @@ export async function getCurrentAdmin(): Promise<AdminSession | null> {
 
     const role = adminDoc.data()?.role as AdminRole | undefined;
 
-    if (role !== "super_admin" && role !== "admin") {
+    if (!role || !VALID_ADMIN_ROLES.includes(role)) {
       return null;
     }
 
@@ -149,4 +162,38 @@ export async function isAdminAuthenticated() {
 export async function isSuperAdmin() {
   const admin = await getCurrentAdmin();
   return admin?.role === "super_admin";
+}
+
+/**
+ * For legacy catalog pages (products/blog/slides/categories) and the
+ * moderation queue — moderators and promoters don't get access, they're
+ * bounced back to their own dashboard.
+ */
+export async function requireStaffAdmin(): Promise<AdminSession> {
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+
+  if (!isStaffAdmin(admin.role)) {
+    redirect(admin.role === "promoter" ? "/admin/my-posts" : "/admin/moderation");
+  }
+
+  return admin;
+}
+
+/** For the moderation queue — staff admins and moderators, not promoters. */
+export async function requireModerator(): Promise<AdminSession> {
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+
+  if (!canModerateListings(admin.role)) {
+    redirect("/admin/my-posts");
+  }
+
+  return admin;
 }
