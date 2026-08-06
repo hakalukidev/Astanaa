@@ -5,5 +5,5 @@
 - [ ] (Optional) Handle collisions/duplicate slugs safely.
 - [ ] Run build/typecheck and manually verify:
   - [ ] Create new post in /admin/blog/new
-  - [ ] Immediately check it appears in /blog list and detail page works.
+ 
 
