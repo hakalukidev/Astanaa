@@ -100,6 +100,7 @@ export const translations = {
       sqft: "sqft",
       noResults: "No listings match your search yet.",
       negotiable: "Negotiable",
+      sortBy: "Sort by",
       sortNewest: "Newest first",
       sortOldest: "Oldest first",
       sortPriceAsc: "Price: Low to High",
@@ -117,6 +118,7 @@ export const translations = {
     },
     listingDetail: {
       description: "Description",
+      mapTitle: "Location",
       negotiable: "Negotiable",
       postedAt: "Posted",
       rejectedNotice: "This listing was rejected and isn't public.",
@@ -203,6 +205,10 @@ export const translations = {
       submit: "Sign up",
       haveAccount: "Already have an account?",
       logIn: "Log in",
+      termsTitle: "Terms & Conditions",
+      loadingTerms: "Loading terms...",
+      termsCheckboxLabel: "I have read and agree to the Terms and Conditions",
+      termsRequiredError: "You must agree to the Terms and Conditions to sign up.",
     },
     myListings: {
       title: "My Listings",
@@ -330,6 +336,7 @@ export const translations = {
       sqft: "বর্গফুট",
       noResults: "আপনার খোঁজের সাথে মিলে এমন কোনো লিস্টিং নেই।",
       negotiable: "দরদাম যোগ্য",
+      sortBy: "সাজান",
       sortNewest: "নতুন আগে",
       sortOldest: "পুরনো আগে",
       sortPriceAsc: "মূল্য: কম থেকে বেশি",
@@ -347,6 +354,7 @@ export const translations = {
     },
     listingDetail: {
       description: "বিবরণ",
+      mapTitle: "অবস্থান",
       negotiable: "দরদাম যোগ্য",
       postedAt: "পোস্ট করা হয়েছে",
       rejectedNotice: "এই লিস্টিং প্রত্যাখ্যান করা হয়েছে এবং এটি পাবলিক নয়।",
@@ -433,6 +441,10 @@ export const translations = {
       submit: "সাইন আপ করুন",
       haveAccount: "ইতিমধ্যে অ্যাকাউন্ট আছে?",
       logIn: "লগইন করুন",
+      termsTitle: "শর্তাবলী",
+      loadingTerms: "শর্তাবলী লোড হচ্ছে...",
+      termsCheckboxLabel: "আমি শর্তাবলী পড়েছি এবং সম্মত আছি",
+      termsRequiredError: "সাইন আপ করতে আপনাকে শর্তাবলীতে সম্মত হতে হবে।",
     },
     myListings: {
       title: "আমার লিস্টিং",

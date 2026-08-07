@@ -65,6 +65,15 @@ service cloud.firestore {
       allow write: if isStaffAdmin();
     }
 
+    // --- settings ----------------------------------------------------------
+    // Site-wide settings docs (currently: terms & conditions shown at signup).
+    // Public read so anyone can view them before agreeing; only admin/super_admin
+    // can edit.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
     // --- users -----------------------------------------------------------
     // Each user can read/write only their own profile document.
     match /users/{userId} {

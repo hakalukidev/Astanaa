@@ -124,16 +124,22 @@ export default function ListingsCatalogClient({
               <option value="rent">{t.forRent}</option>
             </select>
 
-            <select
-              value={sortOption}
-              onChange={(event) => setSortOption(event.target.value as SortOption)}
-              className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
-            >
-              <option value="newest">{t.sortNewest}</option>
-              <option value="oldest">{t.sortOldest}</option>
-              <option value="price-asc">{t.sortPriceAsc}</option>
-              <option value="price-desc">{t.sortPriceDesc}</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <label htmlFor="sortOption" className="shrink-0 text-sm font-medium text-gray-600">
+                {t.sortBy}
+              </label>
+              <select
+                id="sortOption"
+                value={sortOption}
+                onChange={(event) => setSortOption(event.target.value as SortOption)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
+              >
+                <option value="newest">{t.sortNewest}</option>
+                <option value="oldest">{t.sortOldest}</option>
+                <option value="price-asc">{t.sortPriceAsc}</option>
+                <option value="price-desc">{t.sortPriceDesc}</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>

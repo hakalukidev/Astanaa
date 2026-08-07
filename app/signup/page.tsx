@@ -3,7 +3,7 @@
 import { Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { translations } from "@/lib/site-translations";
+import { getTermsAndConditions } from "@/lib/terms";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -25,11 +26,26 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsContent, setTermsContent] = useState("");
+  const [isTermsLoading, setIsTermsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    getTermsAndConditions()
+      .then(setTermsContent)
+      .finally(() => setIsTermsLoading(false));
+  }, []);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!agreedToTerms) {
+      setErrorMessage(t.termsRequiredError);
+      return;
+    }
+
     setErrorMessage("");
     setIsSubmitting(true);
 
@@ -114,11 +130,38 @@ export default function SignUpPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>{t.termsTitle}</Label>
+              <div className="h-32 overflow-y-auto rounded-md border border-gray-300 bg-gray-50 p-3 text-xs leading-relaxed text-gray-600 whitespace-pre-line">
+                {isTermsLoading ? (
+                  <span className="flex items-center gap-2 text-gray-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.loadingTerms}
+                  </span>
+                ) : (
+                  termsContent
+                )}
+              </div>
+              <label htmlFor="agreedToTerms" className="flex items-start gap-2 text-sm text-gray-600">
+                <input
+                  id="agreedToTerms"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(event) => setAgreedToTerms(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                {t.termsCheckboxLabel}
+              </label>
+            </div>
+
             {errorMessage ? (
               <p className="text-sm font-medium text-red-600">{errorMessage}</p>
             ) : null}
 
-            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={isSubmitting || !agreedToTerms}
+            >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t.submit}
             </Button>

@@ -184,6 +184,22 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                 {listing.description}
               </p>
             </div>
+
+            {listing.location ? (
+              <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+                <h2 className="text-lg font-semibold text-gray-900">{t.mapTitle}</h2>
+                <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg border border-gray-100">
+                  <iframe
+                    key={listing.location}
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(listing.location)}&output=embed`}
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={listing.location}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Details / actions */}

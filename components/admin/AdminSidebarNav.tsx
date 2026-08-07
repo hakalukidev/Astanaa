@@ -3,6 +3,7 @@
 
 import {
   ClipboardCheck,
+  FileText,
   FolderTree,
   Image,
   Megaphone,
@@ -29,6 +30,11 @@ const catalogItems = [
     href: "/admin/categories",
     label: "Categories & Sub Categories",
     icon: FolderTree,
+  },
+  {
+    href: "/admin/terms",
+    label: "Terms & Conditions",
+    icon: FileText,
   },
 ];
 

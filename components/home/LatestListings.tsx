@@ -81,16 +81,22 @@ export default function LatestListings({ listings }: LatestListingsProps) {
             </p>
           </div>
 
-          <select
-            value={sortOption}
-            onChange={(event) => setSortOption(event.target.value as SortOption)}
-            className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-500"
-          >
-            <option value="newest">{t.sortNewest}</option>
-            <option value="oldest">{t.sortOldest}</option>
-            <option value="price-asc">{t.sortPriceAsc}</option>
-            <option value="price-desc">{t.sortPriceDesc}</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <label htmlFor="latestListingsSort" className="shrink-0 text-sm font-semibold text-slate-700">
+              {t.sortBy}
+            </label>
+            <select
+              id="latestListingsSort"
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value as SortOption)}
+              className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-500"
+            >
+              <option value="newest">{t.sortNewest}</option>
+              <option value="oldest">{t.sortOldest}</option>
+              <option value="price-asc">{t.sortPriceAsc}</option>
+              <option value="price-desc">{t.sortPriceDesc}</option>
+            </select>
+          </div>
         </div>
 
         <div className="mt-8 flex flex-wrap justify-center gap-5 xl:gap-6">
