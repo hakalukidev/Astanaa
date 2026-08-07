@@ -1,15 +1,16 @@
 rules_version = '2';
 
-// NOTE: This file only documents the rules needed for the new apartment
-// marketplace collections (listings, users, chats, buyRequests, admins-read).
-// It does not include write rules for the pre-existing collections
-// (products, categories, blog, slides) since those aren't tracked in this
-// repo — merge the `match` blocks below into your existing rules in the
-// Firebase Console (or your existing firestore.rules) rather than replacing
-// everything.
+// Covers every collection the client SDK touches directly: the apartment
+// marketplace (listings, users, chats, buyRequests, admins-read) plus the
+// catalog collections written straight from the admin panel via
+// lib/product-service.ts, lib/category-service.ts and lib/slide-service.ts
+// (products, categories, slides — publicly readable, staff-admin writable).
+// Blog posts go through app/api/admin/blog/* (Firebase Admin SDK, server
+// side), so they don't need client rules here.
 //
 // Deploy with: firebase deploy --only firestore:rules
 // (requires `firebase init` / a firebase.json pointing at this file first)
+// — or paste this whole file into Firebase Console → Firestore → Rules.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -44,6 +45,24 @@ service cloud.firestore {
     // server (Firebase Admin SDK) only — no client write rule here.
     match /admins/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- products / categories / slides -----------------------------------
+    // Public catalog data: anyone can read, only admin/super_admin can write.
+    // (No moderator write access here — moderators only touch listings.)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
+    match /slides/{slideId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
     }
 
     // --- users -----------------------------------------------------------

@@ -10,12 +10,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { translations } from "@/lib/site-translations";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuth();
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const t = translations[language].login;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +33,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      toast({ title: "Welcome back!" });
+      toast({ title: t.welcomeBackTitle });
       router.replace("/");
       router.refresh();
     } catch (error) {
@@ -40,11 +44,11 @@ export default function LoginPage() {
         code === "auth/wrong-password" ||
         code === "auth/user-not-found"
       ) {
-        setErrorMessage("Invalid email or password.");
+        setErrorMessage(t.invalidCredentials);
       } else if (code === "auth/too-many-requests") {
-        setErrorMessage("Too many attempts. Please try again later.");
+        setErrorMessage(t.tooManyAttempts);
       } else {
-        setErrorMessage("Could not log in. Please try again.");
+        setErrorMessage(t.genericError);
       }
     } finally {
       setIsSubmitting(false);
@@ -58,13 +62,13 @@ export default function LoginPage() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
             <LogIn size={22} />
           </div>
-          <CardTitle>Log in to Astanaa.com</CardTitle>
-          <CardDescription>Post ads, manage listings, and chat with buyers.</CardDescription>
+          <CardTitle>{t.title}</CardTitle>
+          <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -75,13 +79,13 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.password}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Your password"
+                placeholder={t.passwordPlaceholder}
                 required
               />
             </div>
@@ -92,14 +96,14 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Log in
+              {t.submit}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            Don&apos;t have an account?{" "}
+            {t.noAccount}{" "}
             <Link href="/signup" className="font-semibold text-green-600 hover:underline">
-              Sign up
+              {t.signUp}
             </Link>
           </p>
         </CardContent>

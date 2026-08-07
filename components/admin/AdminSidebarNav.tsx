@@ -3,7 +3,6 @@
 
 import {
   ClipboardCheck,
-  FileText,
   FolderTree,
   Image,
   LayoutDashboard,
@@ -21,11 +20,6 @@ const catalogItems = [
     href: "/admin/products",
     label: "All Products",
     icon: LayoutDashboard,
-  },
-  {
-    href: "/admin/blog",
-    label: "Blog Posts",
-    icon: FileText,
   },
   {
     href: "/admin/slides",

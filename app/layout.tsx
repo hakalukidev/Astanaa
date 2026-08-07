@@ -14,7 +14,10 @@ export const metadata: Metadata = {
   title: 'Astanaa.com - Buy & Sell Apartments in Bangladesh',
   description: 'Post your apartment for sale or rent, and find your next home on Astanaa.com.',
   icons: {
-    icon: '/icon.png',
+    // Versioned query string so browsers don't keep serving the old
+    // favicon from their (very sticky) favicon cache. Bump this string
+    // any time /public/icon.png changes.
+    icon: '/icon.png?v=astanaa-2',
   },
 }
 

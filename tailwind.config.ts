@@ -18,6 +18,10 @@ const config: Config = {
     },
     extend: {
       colors: {
+        // Pulled straight from public/logo.svg (the navy square + mint mark)
+        // so brand-colored UI (navbar, etc.) matches the logo exactly.
+        "brand-navy": "#16364d",
+        "brand-mint": "#57ff8d",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

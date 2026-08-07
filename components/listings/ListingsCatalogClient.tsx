@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { PROPERTY_TYPES, type Listing, type ListingPurpose } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 
 type ListingsCatalogClientProps = {
   initialListings: Listing[];
@@ -15,6 +17,9 @@ export default function ListingsCatalogClient({
   initialListings,
 }: ListingsCatalogClientProps) {
   const searchParams = useSearchParams();
+  const { language } = useLanguage();
+  const t = translations[language].listings;
+  const propertyTypeLabels = translations[language].propertyTypes;
 
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("search")?.trim() ?? "");
   const [selectedType, setSelectedType] = useState(searchParams?.get("type")?.trim() ?? "all");
@@ -55,7 +60,7 @@ export default function ListingsCatalogClient({
       <section className="bg-white py-10">
         <div className="container mx-auto px-4">
           <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">
-            Browse Listings
+            {t.browseTitle}
           </h1>
 
           <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row">
@@ -68,7 +73,7 @@ export default function ListingsCatalogClient({
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by location, title..."
+                placeholder={t.searchPlaceholder}
                 className="w-full rounded-md border border-gray-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-green-500"
               />
             </div>
@@ -78,10 +83,10 @@ export default function ListingsCatalogClient({
               onChange={(event) => setSelectedType(event.target.value)}
               className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
             >
-              <option value="all">All property types</option>
+              <option value="all">{t.allPropertyTypes}</option>
               {PROPERTY_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {propertyTypeLabels[type]}
                 </option>
               ))}
             </select>
@@ -91,9 +96,9 @@ export default function ListingsCatalogClient({
               onChange={(event) => setSelectedPurpose(event.target.value as ListingPurpose | "all")}
               className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
             >
-              <option value="all">Sale &amp; Rent</option>
-              <option value="sale">For Sale</option>
-              <option value="rent">For Rent</option>
+              <option value="all">{t.saleAndRent}</option>
+              <option value="sale">{t.forSale}</option>
+              <option value="rent">{t.forRent}</option>
             </select>
           </div>
         </div>
@@ -103,7 +108,7 @@ export default function ListingsCatalogClient({
         <div className="container mx-auto px-4">
           {filteredListings.length === 0 ? (
             <p className="py-16 text-center text-gray-500">
-              No listings match your search yet.
+              {t.noResults}
             </p>
           ) : (
             <div className="flex flex-wrap justify-center gap-5 xl:gap-6">

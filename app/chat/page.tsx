@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { subscribeToUserChats, type ChatThread } from "@/lib/chat";
+import { translations } from "@/lib/site-translations";
 
 export default function ChatInboxPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { language } = useLanguage();
+  const t = translations[language].chat;
   const [chats, setChats] = useState<ChatThread[]>([]);
   const [chatsLoading, setChatsLoading] = useState(true);
 
@@ -44,7 +48,7 @@ export default function ChatInboxPage() {
   return (
     <main className="min-h-[70vh] bg-gray-50 py-8">
       <div className="mx-auto max-w-2xl px-4">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">Messages</h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900">{t.messages}</h1>
 
         {chatsLoading ? (
           <div className="flex justify-center py-12">
@@ -52,7 +56,7 @@ export default function ChatInboxPage() {
           </div>
         ) : chats.length === 0 ? (
           <p className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
-            No conversations yet. Start a chat from a listing page.
+            {t.noConversations}
           </p>
         ) : (
           <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -79,7 +83,7 @@ export default function ChatInboxPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-gray-900">
-                      {otherName || "Astanaa user"}
+                      {otherName || t.astanaaUser}
                     </p>
                     <p className="truncate text-xs text-gray-500">{chat.listingTitle}</p>
                     {chat.lastMessage ? (

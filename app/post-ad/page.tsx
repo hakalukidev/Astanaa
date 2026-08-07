@@ -4,15 +4,20 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import LocationCascadeSelect, {
+  type LocationCascadeValue,
+} from "@/components/listings/LocationCascadeSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { createListing } from "@/lib/listing-service";
-import { PROPERTY_TYPES, type ListingPurpose } from "@/lib/listings";
+import { formatListingLocation, PROPERTY_TYPES, type ListingPurpose } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 import { uploadListingImage } from "@/lib/upload-listing-image";
 
 const MAX_PHOTOS = 6;
@@ -21,12 +26,20 @@ export default function PostAdPage() {
   const router = useRouter();
   const { user, profile, adminRole, loading } = useAuth();
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const t = translations[language].postAd;
+  const propertyTypeLabels = translations[language].propertyTypes;
 
   const [title, setTitle] = useState("");
   const [purpose, setPurpose] = useState<ListingPurpose>("sale");
   const [propertyType, setPropertyType] = useState<string>(PROPERTY_TYPES[0]);
   const [price, setPrice] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState<LocationCascadeValue>({
+    locationDivision: "",
+    locationDistrict: "",
+    locationUpazila: "",
+    locationArea: "",
+  });
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
   const [areaSqft, setAreaSqft] = useState("");
@@ -71,7 +84,7 @@ export default function PostAdPage() {
         setPhotos((current) => [...current, uploaded]);
       }
     } catch {
-      setErrorMessage("Could not upload one of the photos. Please try again.");
+      setErrorMessage(t.photoUploadError);
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -89,7 +102,12 @@ export default function PostAdPage() {
     }
 
     if (photos.length === 0) {
-      setErrorMessage("Add at least one photo of the apartment.");
+      setErrorMessage(t.noPhotoError);
+      return;
+    }
+
+    if (!location.locationDivision || !location.locationDistrict || !location.locationUpazila) {
+      setErrorMessage(t.locationRequiredError);
       return;
     }
 
@@ -108,7 +126,11 @@ export default function PostAdPage() {
         price: Number(price) || 0,
         purpose,
         propertyType,
-        location: location.trim(),
+        location: formatListingLocation(location),
+        locationDivision: location.locationDivision,
+        locationDistrict: location.locationDistrict,
+        locationUpazila: location.locationUpazila,
+        locationArea: location.locationArea.trim(),
         bedrooms: bedrooms ? Number(bedrooms) : null,
         bathrooms: bathrooms ? Number(bathrooms) : null,
         areaSqft: areaSqft ? Number(areaSqft) : null,
@@ -117,12 +139,12 @@ export default function PostAdPage() {
       });
 
       toast({
-        title: "Ad submitted!",
-        description: "Your listing will go live once it's approved.",
+        title: t.adSubmittedTitle,
+        description: t.adSubmittedDesc,
       });
       router.replace("/my-listings");
     } catch {
-      setErrorMessage("Could not post your ad. Please try again.");
+      setErrorMessage(t.submitErrorFallback);
     } finally {
       setIsSubmitting(false);
     }
@@ -141,13 +163,13 @@ export default function PostAdPage() {
       <div className="mx-auto max-w-3xl px-4">
         <Card>
           <CardHeader>
-            <CardTitle>Post your apartment ad</CardTitle>
+            <CardTitle>{t.pageTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Photos */}
               <div className="space-y-2">
-                <Label>Photos ({photos.length}/{MAX_PHOTOS})</Label>
+                <Label>{t.photos} ({photos.length}/{MAX_PHOTOS})</Label>
                 <div className="flex flex-wrap gap-3">
                   {photos.map((photo) => (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -171,7 +193,7 @@ export default function PostAdPage() {
                       ) : (
                         <>
                           <ImagePlus size={20} />
-                          <span className="text-[11px] font-medium">Add photo</span>
+                          <span className="text-[11px] font-medium">{t.addPhoto}</span>
                         </>
                       )}
                       <input
@@ -189,31 +211,31 @@ export default function PostAdPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="title">Ad title</Label>
+                  <Label htmlFor="title">{t.adTitle}</Label>
                   <Input
                     id="title"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder="e.g. 3 Bedroom Apartment in Dhanmondi"
+                    placeholder={t.adTitlePlaceholder}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="purpose">Purpose</Label>
+                  <Label htmlFor="purpose">{t.purpose}</Label>
                   <select
                     id="purpose"
                     value={purpose}
                     onChange={(event) => setPurpose(event.target.value as ListingPurpose)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    <option value="sale">For Sale</option>
-                    <option value="rent">For Rent</option>
+                    <option value="sale">{t.forSale}</option>
+                    <option value="rent">{t.forRent}</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="propertyType">Property type</Label>
+                  <Label htmlFor="propertyType">{t.propertyType}</Label>
                   <select
                     id="propertyType"
                     value={propertyType}
@@ -222,14 +244,14 @@ export default function PostAdPage() {
                   >
                     {PROPERTY_TYPES.map((type) => (
                       <option key={type} value={type}>
-                        {type}
+                        {propertyTypeLabels[type]}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (BDT)</Label>
+                  <Label htmlFor="price">{t.price}</Label>
                   <Input
                     id="price"
                     type="number"
@@ -241,19 +263,12 @@ export default function PostAdPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={location}
-                    onChange={(event) => setLocation(event.target.value)}
-                    placeholder="e.g. Dhanmondi, Dhaka"
-                    required
-                  />
+                <div className="space-y-2 sm:col-span-2">
+                  <LocationCascadeSelect value={location} onChange={setLocation} required />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bedrooms">Bedrooms</Label>
+                  <Label htmlFor="bedrooms">{t.bedrooms}</Label>
                   <Input
                     id="bedrooms"
                     type="number"
@@ -264,7 +279,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Bathrooms</Label>
+                  <Label htmlFor="bathrooms">{t.bathrooms}</Label>
                   <Input
                     id="bathrooms"
                     type="number"
@@ -275,7 +290,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="areaSqft">Area (sqft)</Label>
+                  <Label htmlFor="areaSqft">{t.area}</Label>
                   <Input
                     id="areaSqft"
                     type="number"
@@ -286,7 +301,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sellerPhone">Contact phone</Label>
+                  <Label htmlFor="sellerPhone">{t.contactPhone}</Label>
                   <Input
                     id="sellerPhone"
                     type="tel"
@@ -298,7 +313,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sellerWhatsapp">WhatsApp number (optional)</Label>
+                  <Label htmlFor="sellerWhatsapp">{t.whatsapp}</Label>
                   <Input
                     id="sellerWhatsapp"
                     type="tel"
@@ -309,12 +324,12 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t.description}</Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    placeholder="Describe the apartment, condition, nearby facilities..."
+                    placeholder={t.descriptionPlaceholder}
                     rows={5}
                     required
                   />
@@ -326,7 +341,7 @@ export default function PostAdPage() {
               ) : null}
 
               <p className="text-xs text-gray-500">
-                Your ad will be reviewed by our team and go live once approved.
+                {t.reviewNote}
               </p>
 
               <Button
@@ -335,7 +350,7 @@ export default function PostAdPage() {
                 disabled={isSubmitting || isUploadingPhoto}
               >
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Submit for approval
+                {t.submit}
               </Button>
             </form>
           </CardContent>

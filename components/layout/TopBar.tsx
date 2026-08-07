@@ -6,12 +6,9 @@ import {
   Building2,
   ChevronDown,
   Globe,
-  Home,
   LogOut,
   Menu,
   MessageCircle,
-  Newspaper,
-  Phone,
   Plus,
   Search,
   ShoppingBag,
@@ -24,12 +21,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { FaFacebook, FaYoutube } from 'react-icons/fa';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { homeTranslations } from '@/lib/home-translations';
 import { PROPERTY_TYPES } from '@/lib/listings';
+import { translations } from '@/lib/site-translations';
 
 const PROPERTY_TYPE_ICONS: Record<string, typeof Building2> = {
   Apartment: Building2,
@@ -48,7 +45,7 @@ function LanguageToggle({ compact = false }: { compact?: boolean }) {
     <button
       type="button"
       onClick={toggleLanguage}
-      className={`flex items-center gap-1 rounded border border-green-400 hover:bg-green-500 transition font-semibold whitespace-nowrap ${
+      className={`flex items-center gap-1 rounded border border-brand-mint text-brand-mint hover:bg-brand-mint hover:text-brand-navy transition font-semibold whitespace-nowrap ${
         compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1 text-xs lg:text-sm'
       }`}
     >
@@ -59,6 +56,8 @@ function LanguageToggle({ compact = false }: { compact?: boolean }) {
 
 export default function TopBar() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const t = translations[language];
   const { user, profile, logOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -97,47 +96,21 @@ export default function TopBar() {
 
   return (
     <div className="sticky top-0 z-50 shadow-md">
-      {/* Slim info strip */}
-      <div className="bg-green-600 text-white text-sm py-1.5 px-4 hidden md:block">
-        <div className="container mx-auto flex justify-between items-center">
-          <p className="font-bold text-xs lg:text-sm">Buy, sell, and rent apartments across Bangladesh.</p>
-          <div className="flex items-center gap-4 lg:gap-6">
-            <Link href="/" className="flex items-center gap-1 hover:text-green-200 transition text-xs lg:text-sm font-semibold">
-              <Home size={14} /> START HERE
-            </Link>
-            <Link href="/about" className="flex items-center gap-1 hover:text-green-200 transition text-xs lg:text-sm font-semibold">
-              ABOUT
-            </Link>
-            <Link href="/blog" className="flex items-center gap-1 hover:text-green-200 transition text-xs lg:text-sm font-semibold">
-              <Newspaper size={14} /> BLOG
-            </Link>
-            <Link href="/contact" className="flex items-center gap-1 hover:text-green-200 transition text-xs lg:text-sm font-semibold">
-              <Phone size={14} /> CONTACT US
-            </Link>
-            <div className="flex items-center gap-2 lg:gap-3 border-l border-green-400 pl-3 lg:pl-4">
-              <a href="#" target="_blank" rel="noopener noreferrer" className="hover:text-green-200 transition"><FaFacebook size={14} /></a>
-              <a href="#" target="_blank" rel="noopener noreferrer" className="hover:text-green-200 transition"><FaYoutube size={14} /></a>
-            </div>
-            <LanguageToggle />
-          </div>
-        </div>
-      </div>
-
       {/* Main bar: logo + browse + search + account (moved in from the old Navbar) */}
-      <div className="bg-white px-4 py-3 md:px-6">
+      <div className="bg-brand-navy px-4 py-3 md:px-6">
         <div className="hidden lg:flex items-center justify-center gap-6">
           <Link href="/" className="flex items-center shrink-0">
             <Image src="/logo.svg" alt="Astanaa.com" width={60} height={35} className="object-contain" unoptimized priority />
-            <span className="ml-2 text-base font-bold text-green-700 leading-tight">ASTANAA.COM</span>
+            <span className="ml-2 text-base font-bold text-white leading-tight">ASTANAA.COM</span>
           </Link>
 
           <div className="relative" ref={browseDropdownRef}>
             <button
               onClick={() => setIsBrowseOpen(!isBrowseOpen)}
-              className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded text-sm font-semibold text-gray-700 transition whitespace-nowrap"
+              className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <Menu size={15} />
-              BROWSE PROPERTY TYPES
+              {t.topbar.browseTypes}
               <ChevronDown size={13} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -147,10 +120,10 @@ export default function TopBar() {
                   <li>
                     <Link
                       href="/listings"
-                      className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700"
+                      className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
                       onClick={() => setIsBrowseOpen(false)}
                     >
-                      All Listings
+                      {t.topbar.allListings}
                     </Link>
                   </li>
                   {PROPERTY_TYPES.map((type) => {
@@ -159,10 +132,10 @@ export default function TopBar() {
                       <li key={type}>
                         <Link
                           href={`/listings?type=${encodeURIComponent(type)}`}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
                           onClick={() => setIsBrowseOpen(false)}
                         >
-                          <Icon size={14} /> {type}
+                          <Icon size={14} /> {t.propertyTypes[type]}
                         </Link>
                       </li>
                     );
@@ -179,26 +152,26 @@ export default function TopBar() {
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by location, title..."
-                className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-green-500"
+                placeholder={t.topbar.searchPlaceholder}
+                className="w-full rounded-md border border-transparent bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
               />
             </div>
           </form>
 
           <Link
             href="/post-ad"
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 whitespace-nowrap"
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-mint px-4 py-2 text-sm font-semibold text-brand-navy transition hover:brightness-95 whitespace-nowrap"
           >
-            <Plus size={15} /> Post Ad
+            <Plus size={15} /> {t.topbar.postAd}
           </Link>
 
           <div className="relative shrink-0" ref={accountDropdownRef}>
             <button
               onClick={() => setIsAccountOpen(!isAccountOpen)}
-              className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded text-sm font-semibold text-gray-700 transition whitespace-nowrap"
+              className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-3 py-2 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <User size={15} />
-              {user ? profile?.name?.split(' ')[0] || 'Account' : 'Login'}
+              {user ? profile?.name?.split(' ')[0] || t.topbar.account : t.topbar.login}
               <ChevronDown size={13} className={`transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -206,46 +179,49 @@ export default function TopBar() {
               <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                 {user ? (
                   <>
-                    <Link href="/my-listings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700" onClick={() => setIsAccountOpen(false)}>
-                      My Listings
+                    <Link href="/my-listings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
+                      {t.topbar.myListings}
                     </Link>
-                    <Link href="/chat" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700" onClick={() => setIsAccountOpen(false)}>
-                      <MessageCircle size={14} /> Messages
+                    <Link href="/chat" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
+                      <MessageCircle size={14} /> {t.topbar.messages}
                     </Link>
                     <button onClick={handleLogOut} className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                      <LogOut size={14} /> Log out
+                      <LogOut size={14} /> {t.topbar.logOut}
                     </button>
                   </>
                 ) : (
                   <>
-                    <Link href="/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700" onClick={() => setIsAccountOpen(false)}>
-                      Log in
+                    <Link href="/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
+                      {t.topbar.logIn}
                     </Link>
-                    <Link href="/signup" className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700" onClick={() => setIsAccountOpen(false)}>
-                      Sign up
+                    <Link href="/signup" className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
+                      {t.topbar.signUp}
                     </Link>
                   </>
                 )}
               </div>
             )}
           </div>
+
+          <LanguageToggle />
         </div>
 
         {/* Mobile bar */}
         <div className="flex lg:hidden items-center justify-between">
           <Link href="/" className="flex items-center shrink-0">
             <Image src="/logo.svg" alt="Astanaa.com" width={50} height={30} className="object-contain" unoptimized priority />
-            <span className="ml-1 text-sm font-bold text-green-700 leading-tight">ASTANAA.COM</span>
+            <span className="ml-1 text-sm font-bold text-white leading-tight">ASTANAA.COM</span>
           </Link>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-2 hover:bg-gray-100 rounded-full">
-              <Search size={18} className="text-gray-600" />
+            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-2 hover:bg-white/10 rounded-full">
+              <Search size={18} className="text-white" />
             </button>
-            <Link href="/post-ad" className="p-2 hover:bg-gray-100 rounded-full" aria-label="Post ad">
-              <Plus size={18} className="text-green-600" />
+            <Link href="/post-ad" className="p-2 hover:bg-white/10 rounded-full" aria-label="Post ad">
+              <Plus size={18} className="text-brand-mint" />
             </Link>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-gray-100 rounded-full">
+            <LanguageToggle compact />
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-white/10 rounded-full text-white">
               {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
@@ -259,8 +235,8 @@ export default function TopBar() {
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by location, title..."
-                className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-green-500"
+                placeholder={t.topbar.searchPlaceholder}
+                className="w-full rounded-md border border-transparent bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
                 autoFocus
               />
             </div>
@@ -272,27 +248,27 @@ export default function TopBar() {
             <div>
               <button
                 onClick={() => setIsBrowseOpen(!isBrowseOpen)}
-                className="w-full flex items-center justify-between gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded text-sm font-semibold text-gray-700 transition"
+                className="w-full flex items-center justify-between gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition"
               >
                 <span className="flex items-center gap-2">
-                  <Menu size={16} /> BROWSE PROPERTY TYPES
+                  <Menu size={16} /> {t.topbar.browseTypes}
                 </span>
                 <ChevronDown size={14} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isBrowseOpen && (
-                <div className="mt-2 ml-4 space-y-1 border-l-2 border-green-200 pl-3">
-                  <Link href="/listings" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => { setIsBrowseOpen(false); setIsMenuOpen(false); }}>
-                    All Listings
+                <div className="mt-2 ml-4 space-y-1 border-l-2 border-white/20 pl-3">
+                  <Link href="/listings" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => { setIsBrowseOpen(false); setIsMenuOpen(false); }}>
+                    {t.topbar.allListings}
                   </Link>
                   {PROPERTY_TYPES.map((type) => (
                     <Link
                       key={type}
                       href={`/listings?type=${encodeURIComponent(type)}`}
-                      className="block py-2 text-sm text-gray-600 hover:text-green-600"
+                      className="block py-2 text-sm text-white/80 hover:text-brand-mint"
                       onClick={() => { setIsBrowseOpen(false); setIsMenuOpen(false); }}
                     >
-                      {type}
+                      {t.propertyTypes[type]}
                     </Link>
                   ))}
                 </div>
@@ -301,41 +277,26 @@ export default function TopBar() {
 
             {user ? (
               <>
-                <Link href="/my-listings" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>
-                  My Listings
+                <Link href="/my-listings" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
+                  {t.topbar.myListings}
                 </Link>
-                <Link href="/chat" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>
-                  Messages
+                <Link href="/chat" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
+                  {t.topbar.messages}
                 </Link>
-                <button onClick={handleLogOut} className="block py-2 text-sm text-red-600">
-                  Log out
+                <button onClick={handleLogOut} className="block py-2 text-sm text-red-400">
+                  {t.topbar.logOut}
                 </button>
               </>
             ) : (
               <>
-                <Link href="/login" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>
-                  Log in
+                <Link href="/login" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
+                  {t.topbar.logIn}
                 </Link>
-                <Link href="/signup" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>
-                  Sign up
+                <Link href="/signup" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
+                  {t.topbar.signUp}
                 </Link>
               </>
             )}
-
-            <div className="pt-2 border-t border-gray-200">
-              <Link href="/" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>Home</Link>
-              <Link href="/about" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>About</Link>
-              <Link href="/contact" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>Contact</Link>
-              <Link href="/blog" className="block py-2 text-sm text-gray-600 hover:text-green-600" onClick={() => setIsMenuOpen(false)}>Blog</Link>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-              <div className="flex items-center gap-3">
-                <a href="#" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-green-600"><FaFacebook size={16} /></a>
-                <a href="#" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-green-600"><FaYoutube size={16} /></a>
-              </div>
-              <LanguageToggle compact />
-            </div>
           </div>
         )}
       </div>

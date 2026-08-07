@@ -17,6 +17,7 @@ import { useState } from "react";
 import BoostListingDialog from "@/components/listings/BoostListingDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { createBuyRequest } from "@/lib/buy-requests";
 import { getOrCreateChat } from "@/lib/chat";
@@ -26,6 +27,7 @@ import {
   getPrimaryListingPhotoUrl,
   type Listing,
 } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 
 type ListingDetailClientProps = {
   listing: Listing;
@@ -35,6 +37,9 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   const router = useRouter();
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const t = translations[language].listingDetail;
+  const tListings = translations[language].listings;
 
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isBuySubmitting, setIsBuySubmitting] = useState(false);
@@ -48,7 +53,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   const isOwner = user?.uid === listing.sellerId;
 
   function requireLogin() {
-    toast({ title: "Please log in first", description: "You need an account to continue." });
+    toast({ title: t.loginRequiredTitle, description: t.loginRequiredDesc });
     router.push(`/login?next=/listings/${listing.id}`);
   }
 
@@ -71,13 +76,13 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
       });
       setBuyRequestSent(true);
       toast({
-        title: "Request sent!",
-        description: "The seller has been notified that you're interested.",
+        title: t.buyRequestSentTitle,
+        description: t.buyRequestSentDesc,
       });
     } catch {
       toast({
-        title: "Something went wrong",
-        description: "Could not send your request. Please try again.",
+        title: t.genericErrorTitle,
+        description: t.buyErrorDesc,
         variant: "destructive",
       });
     } finally {
@@ -106,8 +111,8 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
       router.push(`/chat/${chatId}`);
     } catch {
       toast({
-        title: "Something went wrong",
-        description: "Could not start the chat. Please try again.",
+        title: t.genericErrorTitle,
+        description: t.chatErrorDesc,
         variant: "destructive",
       });
     } finally {
@@ -116,7 +121,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this listing? This cannot be undone.")) {
+    if (!window.confirm(t.deleteConfirm)) {
       return;
     }
 
@@ -124,11 +129,11 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
 
     try {
       await deleteListing(listing.id);
-      toast({ title: "Listing deleted" });
+      toast({ title: t.listingDeletedTitle });
       router.replace("/my-listings");
     } catch {
       toast({
-        title: "Could not delete listing",
+        title: t.deleteErrorTitle,
         variant: "destructive",
       });
       setIsDeleting(false);
@@ -171,7 +176,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
             ) : null}
 
             <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
-              <h2 className="text-lg font-semibold text-gray-900">Description</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t.description}</h2>
               <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-600">
                 {listing.description}
               </p>
@@ -190,18 +195,18 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                   }`}
                 >
                   {listing.status === "rejected"
-                    ? "This listing was rejected and isn't public."
-                    : "Waiting for admin/moderator approval — not public yet."}
+                    ? t.rejectedNotice
+                    : t.pendingNotice}
                 </div>
               ) : null}
 
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                  {listing.purpose === "rent" ? "For Rent" : "For Sale"}
+                  {listing.purpose === "rent" ? tListings.forRent : tListings.forSale}
                 </span>
                 {boostStatus === "active" ? (
                   <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                    <Zap size={10} /> Boosted
+                    <Zap size={10} /> {tListings.boosted}
                   </span>
                 ) : null}
               </div>
@@ -209,7 +214,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
               <p className="mt-3 text-2xl font-bold text-green-700">
                 {formatListingPrice(listing.price)}
                 {listing.purpose === "rent" ? (
-                  <span className="text-sm font-medium text-slate-500"> /month</span>
+                  <span className="text-sm font-medium text-slate-500"> {tListings.perMonth}</span>
                 ) : null}
               </p>
 
@@ -222,15 +227,15 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
               <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 text-center text-xs text-gray-600">
                 <div className="flex flex-col items-center gap-1">
                   <BedDouble size={16} className="text-green-600" />
-                  {listing.bedrooms ?? "-"} Beds
+                  {listing.bedrooms ?? "-"} {t.beds}
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <ShowerHead size={16} className="text-green-600" />
-                  {listing.bathrooms ?? "-"} Baths
+                  {listing.bathrooms ?? "-"} {t.baths}
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <Ruler size={16} className="text-green-600" />
-                  {listing.areaSqft ?? "-"} sqft
+                  {listing.areaSqft ?? "-"} {tListings.sqft}
                 </div>
               </div>
             </div>
@@ -238,7 +243,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
             {/* Seller card */}
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Seller
+                {t.seller}
               </h2>
               <p className="mt-1 text-base font-semibold text-gray-900">{listing.sellerName}</p>
               {listing.sellerPhone ? (
@@ -256,7 +261,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                   rel="noopener noreferrer"
                   className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
                 >
-                  <MessageCircle size={14} /> WhatsApp: {listing.sellerWhatsapp}
+                  <MessageCircle size={14} /> {t.whatsapp} {listing.sellerWhatsapp}
                 </a>
               ) : null}
 
@@ -270,7 +275,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                     {isBuySubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {buyRequestSent ? "Request sent" : "Buy"}
+                    {buyRequestSent ? t.requestSent : t.buy}
                   </Button>
                   <Button
                     onClick={handleChat}
@@ -283,23 +288,23 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                     ) : (
                       <MessageCircle className="mr-2 h-4 w-4" />
                     )}
-                    Chat
+                    {t.chat}
                   </Button>
                 </div>
               ) : (
                 <div className="mt-4 space-y-2">
-                  <p className="text-xs text-gray-500">This is your listing.</p>
+                  <p className="text-xs text-gray-500">{t.yourListingNotice}</p>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     {boostStatus === "none" || boostStatus === "expired" ? (
                       <Button
                         onClick={() => setBoostDialogOpen(true)}
                         className="flex-1 bg-amber-500 hover:bg-amber-600"
                       >
-                        <Zap className="mr-2 h-4 w-4" /> Boost this post (৳100)
+                        <Zap className="mr-2 h-4 w-4" /> {t.boostButton}
                       </Button>
                     ) : (
                       <p className="flex-1 rounded-md bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700">
-                        Boost {boostStatus === "pending" ? "pending verification" : "active"}
+                        {boostStatus === "pending" ? t.boostPending : t.boostActive}
                       </p>
                     )}
                     <Button

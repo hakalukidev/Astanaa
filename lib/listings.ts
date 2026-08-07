@@ -47,6 +47,10 @@ export type Listing = {
   purpose: ListingPurpose;
   propertyType: string;
   location: string;
+  locationDivision: string;
+  locationDistrict: string;
+  locationUpazila: string;
+  locationArea: string;
   bedrooms: number | null;
   bathrooms: number | null;
   areaSqft: number | null;
@@ -122,6 +126,13 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     propertyType:
       typeof data.propertyType === "string" ? data.propertyType : "Apartment",
     location: typeof data.location === "string" ? data.location : "",
+    locationDivision:
+      typeof data.locationDivision === "string" ? data.locationDivision : "",
+    locationDistrict:
+      typeof data.locationDistrict === "string" ? data.locationDistrict : "",
+    locationUpazila:
+      typeof data.locationUpazila === "string" ? data.locationUpazila : "",
+    locationArea: typeof data.locationArea === "string" ? data.locationArea : "",
     bedrooms: toNullableNumber(data.bedrooms),
     bathrooms: toNullableNumber(data.bathrooms),
     areaSqft: toNullableNumber(data.areaSqft),
@@ -152,6 +163,24 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     createdAtMs: getTimestampMs(data.createdAt),
     updatedAtMs: getTimestampMs(data.updatedAt),
   };
+}
+
+/** Joins the cascading location parts (division, district, upazila/thana, para/mohalla) into one display string, narrowest first. */
+export function formatListingLocation(parts: {
+  locationDivision: string;
+  locationDistrict: string;
+  locationUpazila: string;
+  locationArea: string;
+}) {
+  return [
+    parts.locationArea,
+    parts.locationUpazila,
+    parts.locationDistrict,
+    parts.locationDivision,
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function getPrimaryListingPhotoUrl(listing: Listing) {

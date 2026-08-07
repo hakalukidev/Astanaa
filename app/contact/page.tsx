@@ -7,7 +7,13 @@ import {
   Phone
 } from 'lucide-react';
 
+import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/lib/site-translations';
+
 export default function ContactPage() {
+  const { language } = useLanguage();
+  const t = translations[language].contact;
+
   const phoneNumbers = [
     { label: '+88 01897914480', value: '+8801897914480' },
     { label: '+88 01897914481', value: '+8801897914481' },
@@ -22,11 +28,10 @@ export default function ContactPage() {
         <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="mb-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
-              Contact Us
+              {t.heroTitle}
             </h1>
             <p className="text-base text-green-100 sm:text-lg lg:text-xl">
-              Get in touch for listing support, boosting your ad, or any
-              questions about buying and selling on Astanaa.com.
+              {t.heroBody}
             </p>
           </div>
         </div>
@@ -38,15 +43,13 @@ export default function ContactPage() {
             <section className="flex min-w-0 flex-col">
               <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-600">
-                  We&apos;re Online
+                  {t.onlineBadge}
                 </p>
                 <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-                  Astanaa.com is a fully online marketplace
+                  {t.onlineTitle}
                 </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
-                  There&apos;s no showroom to visit — buyers and sellers connect
-                  directly through listings and chat. For platform support,
-                  reach out any of the ways below.
+                  {t.onlineBody}
                 </p>
               </div>
 
@@ -56,22 +59,22 @@ export default function ContactPage() {
                     <MapPin size={22} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Based in</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{t.basedIn}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      Dhaka, Bangladesh
+                      {t.basedInValue}
                     </p>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Support Hours
+                    {t.supportHours}
                   </p>
                   <p className="mt-2 text-sm font-medium text-slate-900">
-                    Saturday - Thursday
+                    {t.supportDays}
                   </p>
-                  <p className="text-sm text-slate-600">9:00 AM - 8:00 PM</p>
-                  <p className="mt-2 text-sm text-slate-600">Friday: Closed</p>
+                  <p className="text-sm text-slate-600">{t.supportTime}</p>
+                  <p className="mt-2 text-sm text-slate-600">{t.fridayClosed}</p>
                 </div>
               </div>
             </section>
@@ -79,13 +82,13 @@ export default function ContactPage() {
             <section className="flex h-full flex-col justify-between bg-gradient-to-br from-green-600 via-green-700 to-slate-900 p-6 text-white shadow-[inset_1px_0_0_rgba(255,255,255,0.08)] sm:p-8 lg:p-10">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-green-100">
-                  Contact Info
+                  {t.contactInfoBadge}
                 </p>
                 <h2 className="mt-2 text-2xl font-bold sm:text-3xl">
-                  Let&apos;s Connect
+                  {t.connectTitle}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-green-100 sm:text-base">
-                  Call, email, or message us for listing or account support.
+                  {t.connectBody}
                 </p>
               </div>
 
@@ -99,7 +102,7 @@ export default function ContactPage() {
                       <Phone size={22} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold">Phone Numbers</h3>
+                      <h3 className="text-lg font-semibold">{t.phoneNumbers}</h3>
                       <div className="mt-2 flex flex-col gap-1 text-sm text-green-50">
                         {phoneNumbers.map((phoneNumber) => (
                           <a
@@ -121,7 +124,7 @@ export default function ContactPage() {
                       <Mail size={22} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold">Email Address</h3>
+                      <h3 className="text-lg font-semibold">{t.emailAddress}</h3>
                       <div className="mt-2 flex flex-col gap-1 text-sm text-green-50">
                         <a href="mailto:info@astanaa.com" className="transition hover:text-white hover:underline">
                           info@astanaa.com
@@ -137,11 +140,11 @@ export default function ContactPage() {
                       <Clock size={22} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold">Working Hours</h3>
+                      <h3 className="text-lg font-semibold">{t.workingHours}</h3>
                       <p className="mt-2 text-sm text-green-50">
-                        Saturday - Thursday: 9:00 AM - 8:00 PM
+                        {t.workingHoursValue}
                       </p>
-                      <p className="text-sm text-green-100">Friday: Closed</p>
+                      <p className="text-sm text-green-100">{t.fridayClosed}</p>
                     </div>
                   </div>
                 </div>

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Building2,
   MessageCircle,
@@ -8,21 +10,26 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/lib/site-translations';
+
 export default function AboutPage() {
+  const { language } = useLanguage();
+  const t = translations[language].about;
+
   return (
     <main className="overflow-hidden">
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-green-900 to-green-700 text-white py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-            YOUR TRUSTED APARTMENT MARKETPLACE
+            {t.heroTitle}
           </h1>
           <p className="text-xl md:text-2xl mb-6">
-            BUY, SELL & RENT APARTMENTS ACROSS BANGLADESH
+            {t.heroSubtitle}
           </p>
           <p className="text-lg max-w-3xl mx-auto">
-            Post your apartment for sale or rent in minutes, and connect
-            directly with buyers and renters — no middleman required.
+            {t.heroBody}
           </p>
         </div>
       </section>
@@ -33,57 +40,48 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl font-bold mb-6 text-gray-800">
-                About Astanaa.com
+                {t.overviewTitle}
               </h2>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                Astanaa.com is an online marketplace where anyone can post an
-                apartment for sale or rent, and buyers can browse, chat, and
-                connect directly with sellers.
+                {t.overviewP1}
               </p>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                We built Astanaa.com to make finding and posting a home
-                simple — a clean listing flow, real-time chat with sellers,
-                and optional boosted visibility to help your ad get seen
-                faster.
+                {t.overviewP2}
               </p>
               <p className="text-gray-600 leading-relaxed">
-                Whether you&apos;re looking for your next apartment or
-                listing your own for sale or rent, Astanaa.com connects you
-                directly with the right people.
+                {t.overviewP3}
               </p>
 
               <div className="grid grid-cols-2 gap-4 mt-8">
                 <div className="flex items-center gap-3">
                   <Sparkles className="text-green-600" size={24} />
-                  <span className="text-gray-700 font-medium">Free to Post</span>
+                  <span className="text-gray-700 font-medium">{t.badgeFreeToPost}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Users className="text-green-600" size={24} />
-                  <span className="text-gray-700 font-medium">Direct Buyer-Seller Chat</span>
+                  <span className="text-gray-700 font-medium">{t.badgeDirectChat}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="text-green-600" size={24} />
-                  <span className="text-gray-700 font-medium">No Middleman</span>
+                  <span className="text-gray-700 font-medium">{t.badgeNoMiddleman}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Zap className="text-green-600" size={24} />
-                  <span className="text-gray-700 font-medium">Boost for More Views</span>
+                  <span className="text-gray-700 font-medium">{t.badgeBoost}</span>
                 </div>
               </div>
             </div>
             <div className="bg-gradient-to-br from-green-100 to-gray-100 rounded-lg p-8">
               <div className="text-center">
                 <div className="text-6xl mb-4">🏢</div>
-                <h3 className="text-2xl font-bold text-green-800 mb-4">Our Mission</h3>
+                <h3 className="text-2xl font-bold text-green-800 mb-4">{t.missionTitle}</h3>
                 <p className="text-gray-600">
-                  To make posting and finding an apartment in Bangladesh as
-                  simple as a few taps — no brokers, no hassle.
+                  {t.missionBody}
                 </p>
                 <div className="mt-6 pt-6 border-t border-gray-300">
-                  <h3 className="text-2xl font-bold text-green-800 mb-4">Our Vision</h3>
+                  <h3 className="text-2xl font-bold text-green-800 mb-4">{t.visionTitle}</h3>
                   <p className="text-gray-600">
-                    To become Bangladesh&apos;s most trusted place to buy,
-                    sell, and rent apartments online.
+                    {t.visionBody}
                   </p>
                 </div>
               </div>
@@ -97,10 +95,10 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-              HOW ASTANAA.COM WORKS
+              {t.howItWorksTitle}
             </h2>
             <p className="text-xl text-gray-600">
-              Post an ad, get discovered, and connect directly
+              {t.howItWorksSubtitle}
             </p>
           </div>
 
@@ -110,11 +108,10 @@ export default function AboutPage() {
                 <div className="bg-green-600 p-3 rounded-full">
                   <Building2 className="text-white" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">Post Your Listing</h3>
+                <h3 className="text-xl font-bold text-gray-800">{t.step1Title}</h3>
               </div>
               <p className="ml-1 text-sm text-gray-600">
-                Add photos, price, and details of your apartment for sale or
-                rent in just a few minutes.
+                {t.step1Body}
               </p>
             </div>
 
@@ -123,11 +120,10 @@ export default function AboutPage() {
                 <div className="bg-green-600 p-3 rounded-full">
                   <Zap className="text-white" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">Boost for Visibility</h3>
+                <h3 className="text-xl font-bold text-gray-800">{t.step2Title}</h3>
               </div>
               <p className="ml-1 text-sm text-gray-600">
-                Optionally boost your post to appear at the top of search
-                results and get seen by more buyers.
+                {t.step2Body}
               </p>
             </div>
 
@@ -136,11 +132,10 @@ export default function AboutPage() {
                 <div className="bg-green-600 p-3 rounded-full">
                   <MessageCircle className="text-white" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800">Chat & Close the Deal</h3>
+                <h3 className="text-xl font-bold text-gray-800">{t.step3Title}</h3>
               </div>
               <p className="ml-1 text-sm text-gray-600">
-                Interested buyers can message you directly through the
-                platform to ask questions and negotiate.
+                {t.step3Body}
               </p>
             </div>
           </div>
@@ -150,13 +145,13 @@ export default function AboutPage() {
       <section className="py-16 bg-white text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Ready to post your apartment?
+            {t.ctaTitle}
           </h2>
           <Link
             href="/post-ad"
             className="inline-flex items-center justify-center rounded-md bg-green-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
           >
-            Post your ad now
+            {t.ctaButton}
           </Link>
         </div>
       </section>

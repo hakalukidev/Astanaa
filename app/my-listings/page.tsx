@@ -6,13 +6,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { subscribeToSellerBuyRequests, type BuyRequest } from "@/lib/buy-requests";
 import { getListingsBySeller } from "@/lib/listing-service";
 import { formatListingPrice, getPrimaryListingPhotoUrl, type Listing } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 
 export default function MyListingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { language } = useLanguage();
+  const t = translations[language].myListings;
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -56,19 +60,19 @@ export default function MyListingsPage() {
     <main className="min-h-[70vh] bg-gray-50 py-8">
       <div className="mx-auto max-w-4xl px-4">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
           <Link
             href="/post-ad"
             className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
           >
-            <Plus size={16} /> Post new ad
+            <Plus size={16} /> {t.postNewAd}
           </Link>
         </div>
 
         {buyRequests.length > 0 ? (
           <div className="mb-8 rounded-xl border border-gray-200 bg-white p-4">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Buy requests received
+              {t.buyRequestsReceived}
             </h2>
             <div className="space-y-2">
               {buyRequests.map((request) => (
@@ -79,7 +83,9 @@ export default function MyListingsPage() {
                   <div>
                     <p className="font-medium text-gray-900">{request.buyerName}</p>
                     <p className="text-xs text-gray-500">
-                      interested in {request.listingTitle}
+                      {language === "bn"
+                        ? `${request.listingTitle} সম্পর্কে আগ্রহী`
+                        : `${t.interestedIn} ${request.listingTitle}`}
                     </p>
                   </div>
                   {request.buyerPhone ? (
@@ -102,7 +108,7 @@ export default function MyListingsPage() {
           </div>
         ) : listings.length === 0 ? (
           <p className="rounded-xl border border-dashed border-gray-300 bg-white py-12 text-center text-sm text-gray-500">
-            You haven&apos;t posted any listings yet.
+            {t.noListings}
           </p>
         ) : (
           <div className="space-y-3">
@@ -131,11 +137,11 @@ export default function MyListingsPage() {
                 </div>
                 {listing.boost.status === "active" ? (
                   <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase text-white">
-                    <Zap size={10} /> Boosted
+                    <Zap size={10} /> {t.boosted}
                   </span>
                 ) : listing.boost.status === "pending" ? (
                   <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase text-amber-700">
-                    Boost pending
+                    {t.boostPending}
                   </span>
                 ) : null}
               </Link>
@@ -147,7 +153,7 @@ export default function MyListingsPage() {
           href="/chat"
           className="mt-6 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-green-400"
         >
-          <MessageCircle size={16} /> View all messages
+          <MessageCircle size={16} /> {t.viewAllMessages}
         </Link>
       </div>
     </main>

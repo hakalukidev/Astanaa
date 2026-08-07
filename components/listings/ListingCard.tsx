@@ -1,17 +1,23 @@
+"use client";
+
 import { BedDouble, MapPin, Ruler, Zap } from "lucide-react";
 import Link from "next/link";
 
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   formatListingPrice,
   getPrimaryListingPhotoUrl,
   type Listing,
 } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 
 type ListingCardProps = {
   listing: Listing;
 };
 
 export default function ListingCard({ listing }: ListingCardProps) {
+  const { language } = useLanguage();
+  const t = translations[language].listings;
   const photoUrl = getPrimaryListingPhotoUrl(listing);
   const isBoosted = listing.boost.status === "active";
 
@@ -36,12 +42,12 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
         {isBoosted ? (
           <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-            <Zap size={10} /> Boosted
+            <Zap size={10} /> {t.boosted}
           </span>
         ) : null}
 
         <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
-          {listing.purpose === "rent" ? "For Rent" : "For Sale"}
+          {listing.purpose === "rent" ? t.forRent : t.forSale}
         </span>
       </div>
 
@@ -49,7 +55,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
         <p className="text-base font-bold text-green-700">
           {formatListingPrice(listing.price)}
           {listing.purpose === "rent" ? (
-            <span className="text-xs font-medium text-slate-500"> /month</span>
+            <span className="text-xs font-medium text-slate-500"> {t.perMonth}</span>
           ) : null}
         </p>
 
@@ -65,12 +71,12 @@ export default function ListingCard({ listing }: ListingCardProps) {
         <div className="mt-1 flex items-center gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
           {listing.bedrooms ? (
             <span className="flex items-center gap-1">
-              <BedDouble size={12} /> {listing.bedrooms} Bed
+              <BedDouble size={12} /> {listing.bedrooms} {t.bed}
             </span>
           ) : null}
           {listing.areaSqft ? (
             <span className="flex items-center gap-1">
-              <Ruler size={12} /> {listing.areaSqft} sqft
+              <Ruler size={12} /> {listing.areaSqft} {t.sqft}
             </span>
           ) : null}
         </div>

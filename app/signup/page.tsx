@@ -10,12 +10,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { translations } from "@/lib/site-translations";
 
 export default function SignUpPage() {
   const router = useRouter();
   const { signUp } = useAuth();
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const t = translations[language].signup;
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -31,20 +35,20 @@ export default function SignUpPage() {
 
     try {
       await signUp({ name, phone, email, password });
-      toast({ title: "Account created", description: "Welcome to Astanaa.com!" });
+      toast({ title: t.accountCreatedTitle, description: t.accountCreatedDesc });
       router.replace("/");
       router.refresh();
     } catch (error) {
       const code = (error as { code?: string })?.code ?? "";
 
       if (code === "auth/email-already-in-use") {
-        setErrorMessage("An account with this email already exists.");
+        setErrorMessage(t.emailInUse);
       } else if (code === "auth/weak-password") {
-        setErrorMessage("Password should be at least 6 characters.");
+        setErrorMessage(t.weakPassword);
       } else if (code === "auth/invalid-email") {
-        setErrorMessage("Enter a valid email address.");
+        setErrorMessage(t.invalidEmail);
       } else {
-        setErrorMessage("Could not create your account. Please try again.");
+        setErrorMessage(t.genericError);
       }
     } finally {
       setIsSubmitting(false);
@@ -58,25 +62,25 @@ export default function SignUpPage() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
             <UserPlus size={22} />
           </div>
-          <CardTitle>Create your account</CardTitle>
+          <CardTitle>{t.title}</CardTitle>
           <CardDescription>
-            Sign up to post apartment ads and chat with buyers.
+            {t.subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
+              <Label htmlFor="name">{t.fullName}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Your name"
+                placeholder={t.fullNamePlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone number</Label>
+              <Label htmlFor="phone">{t.phone}</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -87,7 +91,7 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -98,13 +102,13 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.password}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 6 characters"
+                placeholder={t.passwordPlaceholder}
                 minLength={6}
                 required
               />
@@ -116,14 +120,14 @@ export default function SignUpPage() {
 
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Sign up
+              {t.submit}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            Already have an account?{" "}
+            {t.haveAccount}{" "}
             <Link href="/login" className="font-semibold text-green-600 hover:underline">
-              Log in
+              {t.logIn}
             </Link>
           </p>
         </CardContent>

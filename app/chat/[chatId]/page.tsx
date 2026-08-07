@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   getChatById,
   sendChatMessage,
@@ -13,12 +14,15 @@ import {
   type ChatMessage,
   type ChatThread,
 } from "@/lib/chat";
+import { translations } from "@/lib/site-translations";
 
 export default function ChatThreadPage() {
   const params = useParams<{ chatId: string }>();
   const chatId = params?.chatId ?? "";
   const router = useRouter();
   const { user, loading } = useAuth();
+  const { language } = useLanguage();
+  const t = translations[language].chat;
 
   const [chat, setChat] = useState<ChatThread | null>(null);
   const [chatLoading, setChatLoading] = useState(true);
@@ -85,7 +89,7 @@ export default function ChatThreadPage() {
   if (!chat || !chat.participantIds.includes(user.uid)) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center text-sm text-gray-500">
-        Conversation not found.
+        {t.conversationNotFound}
       </main>
     );
   }
@@ -100,7 +104,7 @@ export default function ChatThreadPage() {
         </Link>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-gray-900">
-            {otherName || "Astanaa user"}
+            {otherName || t.astanaaUser}
           </p>
           <Link
             href={`/listings/${chat.listingId}`}
@@ -140,7 +144,7 @@ export default function ChatThreadPage() {
           type="text"
           value={messageText}
           onChange={(event) => setMessageText(event.target.value)}
-          placeholder="Type a message..."
+          placeholder={t.messagePlaceholder}
           className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm outline-none focus:border-green-500"
         />
         <button
