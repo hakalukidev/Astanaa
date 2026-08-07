@@ -50,7 +50,7 @@ export default function AdminLoginForm() {
         return;
       }
 
-      router.replace("/admin/products");
+      router.replace("/admin/posts");
       router.refresh();
     } catch (error) {
       const code = (error as { code?: string })?.code ?? "";

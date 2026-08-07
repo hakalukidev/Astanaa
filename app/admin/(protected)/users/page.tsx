@@ -9,7 +9,7 @@ export default async function AdminUsersRoute() {
   // AdminShell already redirects to /admin/login when there's no session at
   // all; here we only need to gate the extra "manage other admins" power.
   if (!admin || admin.role !== "super_admin") {
-    redirect("/admin/products");
+    redirect("/admin/posts");
   }
 
   return <AdminUsersPage currentUid={admin.uid} />;

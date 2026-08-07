@@ -5,7 +5,6 @@ import {
   ClipboardCheck,
   FolderTree,
   Image,
-  LayoutDashboard,
   Megaphone,
   ShieldCheck,
 } from "lucide-react";
@@ -17,9 +16,9 @@ import { cn } from "@/lib/utils";
 
 const catalogItems = [
   {
-    href: "/admin/products",
-    label: "All Products",
-    icon: LayoutDashboard,
+    href: "/admin/posts",
+    label: "All Posts",
+    icon: Megaphone,
   },
   {
     href: "/admin/slides",
@@ -75,7 +74,7 @@ export default function AdminSidebarNav({ role }: AdminSidebarNavProps) {
         const Icon = item.icon;
         const isActive =
           currentPathname === item.href ||
-          (item.href !== "/admin/products" &&
+          (item.href !== "/admin/posts" &&
             currentPathname.startsWith(item.href));
 
         return (

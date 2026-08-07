@@ -105,6 +105,34 @@ export function subscribeToListingsByStatus(
   });
 }
 
+/**
+ * Used by the "All Posts" admin page — every listing regardless of status,
+ * newest first. Firestore security rules restrict this to staff/moderator
+ * accounts (see canModerateListings() in firestore.rules); everyone else's
+ * read is scoped to active listings + their own.
+ */
+export function subscribeToAllListingsForAdmin(
+  onChange: (listings: Listing[]) => void
+) {
+  if (!db) {
+    onChange([]);
+    return () => {};
+  }
+
+  const listingsQuery = query(
+    collection(db, LISTINGS_COLLECTION),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(listingsQuery, (snapshot) => {
+    onChange(
+      snapshot.docs
+        .map((docSnapshot) => mapListingSnapshot(docSnapshot))
+        .filter((listing): listing is Listing => Boolean(listing))
+    );
+  });
+}
+
 export function subscribeToActiveListings(
   onChange: (listings: Listing[]) => void
 ) {

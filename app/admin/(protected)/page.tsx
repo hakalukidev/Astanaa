@@ -13,5 +13,5 @@ export default async function AdminPage() {
     redirect("/admin/moderation");
   }
 
-  redirect("/admin/products");
+  redirect("/admin/posts");
 }

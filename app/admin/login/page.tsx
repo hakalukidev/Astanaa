@@ -5,7 +5,7 @@ import { isAdminAuthenticated } from "@/lib/admin-auth";
 
 export default async function AdminLoginPage() {
   if (await isAdminAuthenticated()) {
-    redirect("/admin/products");
+    redirect("/admin/posts");
   }
 
   return (
