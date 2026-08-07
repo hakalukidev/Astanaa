@@ -2,7 +2,9 @@
 
 import {
   BedDouble,
+  Handshake,
   Loader2,
+  Mail,
   MapPin,
   MessageCircle,
   Phone,
@@ -23,6 +25,7 @@ import { createBuyRequest } from "@/lib/buy-requests";
 import { getOrCreateChat } from "@/lib/chat";
 import { deleteListing } from "@/lib/listing-service";
 import {
+  formatListingPostedAt,
   formatListingPrice,
   getPrimaryListingPhotoUrl,
   type Listing,
@@ -211,10 +214,15 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                 ) : null}
               </div>
 
-              <p className="mt-3 text-2xl font-bold text-green-700">
-                {formatListingPrice(listing.price)}
-                {listing.purpose === "rent" ? (
-                  <span className="text-sm font-medium text-slate-500"> {tListings.perMonth}</span>
+              <p className="mt-3 flex items-center justify-between text-2xl font-bold text-green-700">
+                <span>
+                  {formatListingPrice(listing.price)}
+                  {listing.purpose === "rent" ? (
+                    <span className="text-sm font-medium text-slate-500"> {tListings.perMonth}</span>
+                  ) : null}
+                </span>
+                {listing.negotiable ? (
+                  <Handshake size={20} className="shrink-0 text-amber-600" aria-label={t.negotiable} />
                 ) : null}
               </p>
 
@@ -222,6 +230,10 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
 
               <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
                 <MapPin size={14} className="shrink-0" /> {listing.location}
+              </p>
+
+              <p className="mt-1 text-xs text-gray-400">
+                {t.postedAt} {formatListingPostedAt(listing.createdAtMs, language, tListings.time)}
               </p>
 
               <div className="mt-4 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 text-center text-xs text-gray-600">
@@ -261,7 +273,15 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                   rel="noopener noreferrer"
                   className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
                 >
-                  <MessageCircle size={14} /> {t.whatsapp} {listing.sellerWhatsapp}
+                  <MessageCircle size={14} /> {listing.sellerWhatsapp}
+                </a>
+              ) : null}
+              {listing.sellerEmail ? (
+                <a
+                  href={`mailto:${listing.sellerEmail}`}
+                  className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
+                >
+                  <Mail size={14} /> {listing.sellerEmail}
                 </a>
               ) : null}
 

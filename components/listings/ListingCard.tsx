@@ -1,10 +1,11 @@
 "use client";
 
-import { BedDouble, MapPin, Ruler, Zap } from "lucide-react";
+import { BedDouble, Handshake, MapPin, Ruler, Zap } from "lucide-react";
 import Link from "next/link";
 
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
+  formatListingPostedAt,
   formatListingPrice,
   getPrimaryListingPhotoUrl,
   type Listing,
@@ -52,10 +53,15 @@ export default function ListingCard({ listing }: ListingCardProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3 text-left">
-        <p className="text-base font-bold text-green-700">
-          {formatListingPrice(listing.price)}
-          {listing.purpose === "rent" ? (
-            <span className="text-xs font-medium text-slate-500"> {t.perMonth}</span>
+        <p className="flex items-center justify-between text-base font-bold text-green-700">
+          <span>
+            {formatListingPrice(listing.price)}
+            {listing.purpose === "rent" ? (
+              <span className="text-xs font-medium text-slate-500"> {t.perMonth}</span>
+            ) : null}
+          </span>
+          {listing.negotiable ? (
+            <Handshake size={16} className="shrink-0 text-amber-600" aria-label={t.negotiable} />
           ) : null}
         </p>
 
@@ -68,17 +74,22 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <span className="line-clamp-1">{listing.location}</span>
         </p>
 
-        <div className="mt-1 flex items-center gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-          {listing.bedrooms ? (
-            <span className="flex items-center gap-1">
-              <BedDouble size={12} /> {listing.bedrooms} {t.bed}
-            </span>
-          ) : null}
-          {listing.areaSqft ? (
-            <span className="flex items-center gap-1">
-              <Ruler size={12} /> {listing.areaSqft} {t.sqft}
-            </span>
-          ) : null}
+        <div className="mt-1 flex items-center justify-between gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-3">
+            {listing.bedrooms ? (
+              <span className="flex items-center gap-1">
+                <BedDouble size={12} /> {listing.bedrooms} {t.bed}
+              </span>
+            ) : null}
+            {listing.areaSqft ? (
+              <span className="flex items-center gap-1">
+                <Ruler size={12} /> {listing.areaSqft} {t.sqft}
+              </span>
+            ) : null}
+          </div>
+          <span className="shrink-0">
+            {formatListingPostedAt(listing.createdAtMs, language, t.time)}
+          </span>
         </div>
       </div>
     </Link>

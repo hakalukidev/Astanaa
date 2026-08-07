@@ -40,10 +40,12 @@ export type Listing = {
   sellerName: string;
   sellerPhone: string;
   sellerWhatsapp: string;
+  sellerEmail: string;
   sellerRole: "client" | "promoter";
   title: string;
   description: string;
   price: number;
+  negotiable: boolean;
   purpose: ListingPurpose;
   propertyType: string;
   location: string;
@@ -118,10 +120,12 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     sellerName: typeof data.sellerName === "string" ? data.sellerName : "",
     sellerPhone: typeof data.sellerPhone === "string" ? data.sellerPhone : "",
     sellerWhatsapp: typeof data.sellerWhatsapp === "string" ? data.sellerWhatsapp : "",
+    sellerEmail: typeof data.sellerEmail === "string" ? data.sellerEmail : "",
     sellerRole: data.sellerRole === "promoter" ? "promoter" : "client",
     title: typeof data.title === "string" ? data.title : "",
     description: typeof data.description === "string" ? data.description : "",
     price: toNullableNumber(data.price) ?? 0,
+    negotiable: data.negotiable === true,
     purpose: data.purpose === "rent" ? "rent" : "sale",
     propertyType:
       typeof data.propertyType === "string" ? data.propertyType : "Apartment",
@@ -193,4 +197,56 @@ export function formatListingPrice(price: number) {
   }
 
   return `৳ ${price.toLocaleString("en-BD")}`;
+}
+
+type PostedAtLabels = {
+  justNow: string;
+  minute: string;
+  minutes: string;
+  hour: string;
+  hours: string;
+  day: string;
+  days: string;
+  ago: string;
+};
+
+/**
+ * "Posted X ago" for a listing: minutes, then hours, then days, then (past a
+ * week) the exact date it was posted — same convention as most marketplaces.
+ */
+export function formatListingPostedAt(
+  createdAtMs: number | null,
+  language: "en" | "bn",
+  labels: PostedAtLabels
+) {
+  if (!createdAtMs) {
+    return "";
+  }
+
+  const diffMs = Date.now() - createdAtMs;
+  const diffMinutes = Math.floor(diffMs / (60 * 1000));
+  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+  if (diffMinutes < 1) {
+    return labels.justNow;
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} ${diffMinutes === 1 ? labels.minute : labels.minutes} ${labels.ago}`;
+  }
+
+  if (diffHours < 24) {
+    return `${diffHours} ${diffHours === 1 ? labels.hour : labels.hours} ${labels.ago}`;
+  }
+
+  if (diffDays < 7) {
+    return `${diffDays} ${diffDays === 1 ? labels.day : labels.days} ${labels.ago}`;
+  }
+
+  return new Intl.DateTimeFormat(language === "bn" ? "bn-BD" : "en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(createdAtMs);
 }

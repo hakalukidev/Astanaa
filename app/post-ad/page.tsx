@@ -34,6 +34,7 @@ export default function PostAdPage() {
   const [purpose, setPurpose] = useState<ListingPurpose>("sale");
   const [propertyType, setPropertyType] = useState<string>(PROPERTY_TYPES[0]);
   const [price, setPrice] = useState("");
+  const [negotiable, setNegotiable] = useState(false);
   const [location, setLocation] = useState<LocationCascadeValue>({
     locationDivision: "",
     locationDistrict: "",
@@ -46,6 +47,7 @@ export default function PostAdPage() {
   const [description, setDescription] = useState("");
   const [sellerPhone, setSellerPhone] = useState("");
   const [sellerWhatsapp, setSellerWhatsapp] = useState("");
+  const [sellerEmail, setSellerEmail] = useState("");
 
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -120,10 +122,12 @@ export default function PostAdPage() {
         sellerName: profile?.name || user.displayName || "Astanaa user",
         sellerPhone,
         sellerWhatsapp,
+        sellerEmail: sellerEmail.trim(),
         sellerRole: adminRole === "promoter" ? "promoter" : "client",
         title: title.trim(),
         description: description.trim(),
         price: Number(price) || 0,
+        negotiable,
         purpose,
         propertyType,
         location: formatListingLocation(location),
@@ -261,6 +265,16 @@ export default function PostAdPage() {
                     placeholder="4000000"
                     required
                   />
+                  <label htmlFor="negotiable" className="flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                      id="negotiable"
+                      type="checkbox"
+                      checked={negotiable}
+                      onChange={(event) => setNegotiable(event.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    {t.negotiable}
+                  </label>
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
@@ -320,6 +334,17 @@ export default function PostAdPage() {
                     value={sellerWhatsapp}
                     onChange={(event) => setSellerWhatsapp(event.target.value)}
                     placeholder="01XXXXXXXXX"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sellerEmail">{t.email}</Label>
+                  <Input
+                    id="sellerEmail"
+                    type="email"
+                    value={sellerEmail}
+                    onChange={(event) => setSellerEmail(event.target.value)}
+                    placeholder="you@example.com"
                   />
                 </div>
 

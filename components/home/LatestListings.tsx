@@ -1,13 +1,51 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { type Listing } from "@/lib/listings";
+import { translations } from "@/lib/site-translations";
 
 type LatestListingsProps = {
   listings: Listing[];
 };
 
+type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
+
+function compareBySortOption(left: Listing, right: Listing, sortOption: SortOption) {
+  switch (sortOption) {
+    case "oldest":
+      return (left.createdAtMs ?? 0) - (right.createdAtMs ?? 0);
+    case "price-asc":
+      return left.price - right.price;
+    case "price-desc":
+      return right.price - left.price;
+    case "newest":
+    default:
+      return (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0);
+  }
+}
+
 export default function LatestListings({ listings }: LatestListingsProps) {
+  const { language } = useLanguage();
+  const t = translations[language].listings;
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+
+  const sortedListings = useMemo(() => {
+    return [...listings].sort((left, right) => {
+      const leftBoosted = left.boost.status === "active" ? 1 : 0;
+      const rightBoosted = right.boost.status === "active" ? 1 : 0;
+
+      if (leftBoosted !== rightBoosted) {
+        return rightBoosted - leftBoosted;
+      }
+
+      return compareBySortOption(left, right, sortOption);
+    });
+  }, [listings, sortOption]);
+
   if (listings.length === 0) {
     return (
       <section className="bg-[#f5f4ef] py-16 text-center">
@@ -43,16 +81,20 @@ export default function LatestListings({ listings }: LatestListingsProps) {
             </p>
           </div>
 
-          <Link
-            href="/listings"
-            className="inline-flex items-center justify-center border border-slate-900 px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-slate-900 transition hover:bg-slate-900 hover:text-white"
+          <select
+            value={sortOption}
+            onChange={(event) => setSortOption(event.target.value as SortOption)}
+            className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-500"
           >
-            Browse all
-          </Link>
+            <option value="newest">{t.sortNewest}</option>
+            <option value="oldest">{t.sortOldest}</option>
+            <option value="price-asc">{t.sortPriceAsc}</option>
+            <option value="price-desc">{t.sortPriceDesc}</option>
+          </select>
         </div>
 
         <div className="mt-8 flex flex-wrap justify-center gap-5 xl:gap-6">
-          {listings.slice(0, 8).map((listing) => (
+          {sortedListings.slice(0, 8).map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
           ))}
         </div>

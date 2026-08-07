@@ -9,6 +9,22 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { PROPERTY_TYPES, type Listing, type ListingPurpose } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
+type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
+
+function compareBySortOption(left: Listing, right: Listing, sortOption: SortOption) {
+  switch (sortOption) {
+    case "oldest":
+      return (left.createdAtMs ?? 0) - (right.createdAtMs ?? 0);
+    case "price-asc":
+      return left.price - right.price;
+    case "price-desc":
+      return right.price - left.price;
+    case "newest":
+    default:
+      return (right.createdAtMs ?? 0) - (left.createdAtMs ?? 0);
+  }
+}
+
 type ListingsCatalogClientProps = {
   initialListings: Listing[];
 };
@@ -26,6 +42,7 @@ export default function ListingsCatalogClient({
   const [selectedPurpose, setSelectedPurpose] = useState<ListingPurpose | "all">(
     (searchParams?.get("purpose") as ListingPurpose | null) ?? "all"
   );
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
@@ -47,13 +64,19 @@ export default function ListingsCatalogClient({
       return matchesType && matchesPurpose && matchesSearch;
     });
 
-    // Boosted (paid) listings surface first.
+    // Boosted (paid) listings always surface first; the chosen sort applies
+    // within each of those two tiers.
     return [...filtered].sort((left, right) => {
       const leftBoosted = left.boost.status === "active" ? 1 : 0;
       const rightBoosted = right.boost.status === "active" ? 1 : 0;
-      return rightBoosted - leftBoosted;
+
+      if (leftBoosted !== rightBoosted) {
+        return rightBoosted - leftBoosted;
+      }
+
+      return compareBySortOption(left, right, sortOption);
     });
-  }, [initialListings, deferredSearchTerm, selectedType, selectedPurpose]);
+  }, [initialListings, deferredSearchTerm, selectedType, selectedPurpose, sortOption]);
 
   return (
     <main className="bg-gray-50">
@@ -99,6 +122,17 @@ export default function ListingsCatalogClient({
               <option value="all">{t.saleAndRent}</option>
               <option value="sale">{t.forSale}</option>
               <option value="rent">{t.forRent}</option>
+            </select>
+
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value as SortOption)}
+              className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
+            >
+              <option value="newest">{t.sortNewest}</option>
+              <option value="oldest">{t.sortOldest}</option>
+              <option value="price-asc">{t.sortPriceAsc}</option>
+              <option value="price-desc">{t.sortPriceDesc}</option>
             </select>
           </div>
         </div>
