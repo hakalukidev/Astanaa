@@ -5,7 +5,6 @@ import {
   Building,
   Building2,
   ChevronDown,
-  Globe,
   LogOut,
   Menu,
   MessageCircle,
@@ -24,7 +23,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { homeTranslations } from '@/lib/home-translations';
 import { PROPERTY_TYPES } from '@/lib/listings';
 import { translations } from '@/lib/site-translations';
 
@@ -37,19 +35,29 @@ const PROPERTY_TYPE_ICONS: Record<string, typeof Building2> = {
   Shop: ShoppingBag,
 };
 
+const LANGUAGE_FLAG: Record<'bn' | 'en', string> = {
+  bn: '🇧🇩',
+  en: '🇺🇸',
+};
+
+const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
+  bn: 'বাং',
+  en: 'En',
+};
+
 function LanguageToggle({ compact = false }: { compact?: boolean }) {
   const { language, toggleLanguage } = useLanguage();
-  const label = homeTranslations[language].languageToggleLabel;
 
   return (
     <button
       type="button"
       onClick={toggleLanguage}
       className={`flex items-center gap-1 rounded border border-brand-mint text-brand-mint hover:bg-brand-mint hover:text-brand-navy transition font-semibold whitespace-nowrap ${
-        compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1 text-xs lg:text-sm'
+        compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-xs lg:text-sm'
       }`}
     >
-      <Globe size={compact ? 12 : 14} /> {label}
+      <span aria-hidden="true">{LANGUAGE_FLAG[language]}</span>
+      {LANGUAGE_SHORT_LABEL[language]}
     </button>
   );
 }
@@ -97,17 +105,17 @@ export default function TopBar() {
   return (
     <div className="sticky top-0 z-50 shadow-md">
       {/* Main bar: logo + browse + search + account (moved in from the old Navbar) */}
-      <div className="bg-brand-navy px-4 py-3 md:px-6">
+      <div className="bg-brand-navy px-4 py-1.5 md:px-6">
         <div className="hidden lg:flex items-center justify-center gap-6">
           <Link href="/" className="flex items-center shrink-0">
-            <Image src="/logo.svg" alt="Astanaa.com" width={60} height={35} className="object-contain" unoptimized priority />
+            <Image src="/logo.svg" alt="Astanaa.com" width={52} height={28} className="object-contain" unoptimized priority />
             <span className="ml-2 text-base font-bold text-white leading-tight">ASTANAA.COM</span>
           </Link>
 
           <div className="relative" ref={browseDropdownRef}>
             <button
               onClick={() => setIsBrowseOpen(!isBrowseOpen)}
-              className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition whitespace-nowrap"
+              className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-1.5 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <Menu size={15} />
               {t.topbar.browseTypes}
@@ -153,14 +161,14 @@ export default function TopBar() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder={t.topbar.searchPlaceholder}
-                className="w-full rounded-md border border-transparent bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
+                className="w-full rounded-md border border-transparent bg-white py-1.5 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
               />
             </div>
           </form>
 
           <Link
             href="/post-ad"
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-mint px-4 py-2 text-sm font-semibold text-brand-navy transition hover:brightness-95 whitespace-nowrap"
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-mint px-4 py-1.5 text-sm font-semibold text-brand-navy transition hover:brightness-95 whitespace-nowrap"
           >
             <Plus size={15} /> {t.topbar.postAd}
           </Link>
@@ -168,10 +176,10 @@ export default function TopBar() {
           <div className="relative shrink-0" ref={accountDropdownRef}>
             <button
               onClick={() => setIsAccountOpen(!isAccountOpen)}
-              className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-3 py-2 rounded text-sm font-semibold text-white transition whitespace-nowrap"
+              aria-label={user ? profile?.name?.split(' ')[0] || t.topbar.account : t.topbar.login}
+              className="flex items-center gap-1 border border-white/25 hover:bg-white/10 p-1.5 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
-              <User size={15} />
-              {user ? profile?.name?.split(' ')[0] || t.topbar.account : t.topbar.login}
+              <User size={17} />
               <ChevronDown size={13} className={`transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -209,19 +217,19 @@ export default function TopBar() {
         {/* Mobile bar */}
         <div className="flex lg:hidden items-center justify-between">
           <Link href="/" className="flex items-center shrink-0">
-            <Image src="/logo.svg" alt="Astanaa.com" width={50} height={30} className="object-contain" unoptimized priority />
+            <Image src="/logo.svg" alt="Astanaa.com" width={42} height={24} className="object-contain" unoptimized priority />
             <span className="ml-1 text-sm font-bold text-white leading-tight">ASTANAA.COM</span>
           </Link>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-2 hover:bg-white/10 rounded-full">
+            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-1.5 hover:bg-white/10 rounded-full">
               <Search size={18} className="text-white" />
             </button>
-            <Link href="/post-ad" className="p-2 hover:bg-white/10 rounded-full" aria-label="Post ad">
+            <Link href="/post-ad" className="p-1.5 hover:bg-white/10 rounded-full" aria-label="Post ad">
               <Plus size={18} className="text-brand-mint" />
             </Link>
             <LanguageToggle compact />
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-white/10 rounded-full text-white">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1.5 hover:bg-white/10 rounded-full text-white">
               {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
