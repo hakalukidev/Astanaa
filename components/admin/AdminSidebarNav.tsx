@@ -7,6 +7,7 @@ import {
   FileText,
   FolderTree,
   Image,
+  LayoutPanelTop,
   Megaphone,
   ShieldCheck,
 } from "lucide-react";
@@ -41,6 +42,11 @@ const catalogItems = [
     href: "/admin/terms",
     label: "Terms & Conditions",
     icon: FileText,
+  },
+  {
+    href: "/admin/footer",
+    label: "Footer",
+    icon: LayoutPanelTop,
   },
 ];
 

@@ -235,6 +235,37 @@ export function formatListingPrice(price: number) {
   return `৳ ${price.toLocaleString("en-BD")}`;
 }
 
+/** Preset price bands (BDT) shown in the listings price filter, min/max being inclusive. */
+export type PriceBand = { min: number | null; max: number | null };
+
+export const PRICE_BANDS: PriceBand[] = [
+  { min: null, max: 50000 },
+  { min: 50000, max: 500000 },
+  { min: 500000, max: 5000000 },
+  { min: 5000000, max: 10000000 },
+  { min: 10000000, max: 50000000 },
+  { min: 50000000, max: null },
+];
+
+/** Compact "৳39 K / ৳1.5 L / ৳3.1 Cr" style formatting, following the Bangladeshi lakh/crore scale. */
+export function formatCompactBDT(amount: number) {
+  const trim = (value: number) => {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+
+  if (amount >= 10000000) {
+    return `৳${trim(amount / 10000000)} Cr`;
+  }
+  if (amount >= 100000) {
+    return `৳${trim(amount / 100000)} L`;
+  }
+  if (amount >= 1000) {
+    return `৳${trim(amount / 1000)} K`;
+  }
+  return `৳${amount.toLocaleString("en-BD")}`;
+}
+
 type PostedAtLabels = {
   justNow: string;
   minute: string;
