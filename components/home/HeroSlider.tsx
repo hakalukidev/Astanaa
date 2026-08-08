@@ -78,6 +78,19 @@ export default function HeroSlider() {
             >
               <ChevronRight size={20} />
             </button>
+
+            <div className="absolute inset-x-0 bottom-3 z-20 flex items-center justify-center gap-2">
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id}
+                  onClick={() => setCurrent(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    i === current ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/75'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -93,24 +106,6 @@ export default function HeroSlider() {
             {activeSlide.cta}
           </Link>
         </div>
-      </div>
-
-      <div className="flex items-center justify-center gap-3 px-4 py-4 sm:px-6">
-        {slides.map((slide, i) => (
-          <button
-            key={slide.id}
-            onClick={() => setCurrent(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className="flex items-center gap-1.5"
-          >
-            <span className={`text-xs font-bold ${i === current ? 'text-gray-900' : 'text-gray-400'}`}>
-              0{i + 1}
-            </span>
-            <span
-              className={`block h-0.5 transition-all duration-300 ${i === current ? 'w-10 bg-blue-600' : 'w-5 bg-gray-400'}`}
-            />
-          </button>
-        ))}
       </div>
     </section>
   );
