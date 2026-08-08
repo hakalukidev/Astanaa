@@ -6,7 +6,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { PROPERTY_TYPES, type Listing, type ListingPurpose } from "@/lib/listings";
+import { PROPERTY_TYPES, PROPERTY_TYPES_BY_PURPOSE, type Listing, type ListingPurpose } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
@@ -48,7 +48,12 @@ export default function ListingsCatalogClient({
   useEffect(() => {
     setSearchTerm(searchParams?.get("search")?.trim() ?? "");
     setSelectedType(searchParams?.get("type")?.trim() ?? "all");
+    setSelectedPurpose((searchParams?.get("purpose") as ListingPurpose | null) ?? "all");
   }, [searchParams]);
+
+  // Property types offered in the type dropdown narrow down to the chosen purpose
+  // (a rent-only type like "Sublet" has no sale equivalent, and vice versa).
+  const visibleTypes = selectedPurpose === "all" ? PROPERTY_TYPES : PROPERTY_TYPES_BY_PURPOSE[selectedPurpose];
 
   const filteredListings = useMemo(() => {
     const normalizedSearch = deferredSearchTerm.trim().toLowerCase();
@@ -107,16 +112,24 @@ export default function ListingsCatalogClient({
               className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
             >
               <option value="all">{t.allPropertyTypes}</option>
-              {PROPERTY_TYPES.map((type) => (
+              {visibleTypes.map((type) => (
                 <option key={type} value={type}>
-                  {propertyTypeLabels[type]}
+                  {propertyTypeLabels[type] ?? type}
                 </option>
               ))}
             </select>
 
             <select
               value={selectedPurpose}
-              onChange={(event) => setSelectedPurpose(event.target.value as ListingPurpose | "all")}
+              onChange={(event) => {
+                const nextPurpose = event.target.value as ListingPurpose | "all";
+                setSelectedPurpose(nextPurpose);
+                const nextVisibleTypes =
+                  nextPurpose === "all" ? PROPERTY_TYPES : PROPERTY_TYPES_BY_PURPOSE[nextPurpose];
+                if (!nextVisibleTypes.includes(selectedType)) {
+                  setSelectedType("all");
+                }
+              }}
               className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
             >
               <option value="all">{t.saleAndRent}</option>

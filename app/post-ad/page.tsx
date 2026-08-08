@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { createListing } from "@/lib/listing-service";
-import { formatListingLocation, PROPERTY_TYPES, type ListingPurpose } from "@/lib/listings";
+import { formatListingLocation, PROPERTY_TYPES_BY_PURPOSE, type ListingPurpose } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 import { uploadListingImage } from "@/lib/upload-listing-image";
 
@@ -32,7 +32,7 @@ export default function PostAdPage() {
 
   const [title, setTitle] = useState("");
   const [purpose, setPurpose] = useState<ListingPurpose>("sale");
-  const [propertyType, setPropertyType] = useState<string>(PROPERTY_TYPES[0]);
+  const [propertyType, setPropertyType] = useState<string>(PROPERTY_TYPES_BY_PURPOSE.sale[0]);
   const [price, setPrice] = useState("");
   const [negotiable, setNegotiable] = useState(false);
   const [location, setLocation] = useState<LocationCascadeValue>({
@@ -230,7 +230,11 @@ export default function PostAdPage() {
                   <select
                     id="purpose"
                     value={purpose}
-                    onChange={(event) => setPurpose(event.target.value as ListingPurpose)}
+                    onChange={(event) => {
+                      const nextPurpose = event.target.value as ListingPurpose;
+                      setPurpose(nextPurpose);
+                      setPropertyType(PROPERTY_TYPES_BY_PURPOSE[nextPurpose][0]);
+                    }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="sale">{t.forSale}</option>
@@ -246,9 +250,9 @@ export default function PostAdPage() {
                     onChange={(event) => setPropertyType(event.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    {PROPERTY_TYPES.map((type) => (
+                    {PROPERTY_TYPES_BY_PURPOSE[purpose].map((type) => (
                       <option key={type} value={type}>
-                        {propertyTypeLabels[type]}
+                        {propertyTypeLabels[type] ?? type}
                       </option>
                     ))}
                   </select>

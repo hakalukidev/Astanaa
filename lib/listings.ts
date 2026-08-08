@@ -7,19 +7,40 @@ import type {
 
 export const LISTINGS_COLLECTION = "listings";
 
-export const PROPERTY_TYPES = [
-  "Apartment",
-  "Duplex",
-  "Land",
-  "Commercial Space",
-  "Office Space",
-  "Shop",
-] as const;
-
-export type PropertyType = (typeof PROPERTY_TYPES)[number];
-
 export const LISTING_PURPOSES = ["sale", "rent"] as const;
 export type ListingPurpose = (typeof LISTING_PURPOSES)[number];
+
+/** Property types offered under each purpose, in display order (matches the Browse menu). */
+export const PROPERTY_TYPES_BY_PURPOSE: Record<ListingPurpose, readonly string[]> = {
+  rent: [
+    "Flat Rent",
+    "Sublet",
+    "Roommate",
+    "Shop",
+    "Office/Commercial Space",
+    "Sublet Office",
+    "Warehouse",
+    "Motorcycle Garage",
+    "Car Garage",
+  ],
+  sale: [
+    "Flat Sell",
+    "Shop Sell",
+    "Office/Commercial Space Sell",
+    "Warehouse",
+    "Building With Land Sell",
+    "Land Sell",
+    "Motorcycle Garage Sell",
+    "Car Garage Sell",
+  ],
+};
+
+/** Every property type across both purposes, de-duplicated (e.g. "Warehouse" appears in both). */
+export const PROPERTY_TYPES: readonly string[] = Array.from(
+  new Set([...PROPERTY_TYPES_BY_PURPOSE.rent, ...PROPERTY_TYPES_BY_PURPOSE.sale])
+);
+
+export type PropertyType = string;
 
 export type ListingStatus = "active" | "sold" | "pending" | "rejected";
 
@@ -139,7 +160,7 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     negotiable: data.negotiable === true,
     purpose: data.purpose === "rent" ? "rent" : "sale",
     propertyType:
-      typeof data.propertyType === "string" ? data.propertyType : "Apartment",
+      typeof data.propertyType === "string" ? data.propertyType : "Flat Rent",
     location: typeof data.location === "string" ? data.location : "",
     locationDivision:
       typeof data.locationDivision === "string" ? data.locationDivision : "",

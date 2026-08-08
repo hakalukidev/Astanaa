@@ -9,13 +9,31 @@ import type { Language } from "@/contexts/LanguageContext";
 export const translations = {
   en: {
     propertyTypes: {
+      // Rent types
+      "Flat Rent": "Flat Rent",
+      Sublet: "Sublet",
+      Roommate: "Roommate",
+      Shop: "Shop",
+      "Office/Commercial Space": "Office/Commercial Space",
+      "Sublet Office": "Sublet Office",
+      Warehouse: "Warehouse",
+      "Motorcycle Garage": "Motorcycle Garage",
+      "Car Garage": "Car Garage",
+      // Sell types
+      "Flat Sell": "Flat Sell",
+      "Shop Sell": "Shop Sell",
+      "Office/Commercial Space Sell": "Office/Commercial Space Sell",
+      "Building With Land Sell": "Building With Land Sell",
+      "Land Sell": "Land Sell",
+      "Motorcycle Garage Sell": "Motorcycle Garage Sell",
+      "Car Garage Sell": "Car Garage Sell",
+      // Legacy types (kept so older listings still show a label)
       Apartment: "Apartment",
       Duplex: "Duplex",
       Land: "Land",
       "Commercial Space": "Commercial Space",
       "Office Space": "Office Space",
-      Shop: "Shop",
-    },
+    } as Record<string, string>,
     topbar: {
       browseTypes: "BROWSE PROPERTY TYPES",
       allListings: "All Listings",
@@ -245,13 +263,31 @@ export const translations = {
   },
   bn: {
     propertyTypes: {
+      // Rent types
+      "Flat Rent": "ফ্ল্যাট ভাড়া",
+      Sublet: "সাবলেট",
+      Roommate: "রুমমেট",
+      Shop: "দোকান",
+      "Office/Commercial Space": "অফিস/কমার্শিয়াল স্পেস",
+      "Sublet Office": "সাবলেট অফিস",
+      Warehouse: "গুদাম",
+      "Motorcycle Garage": "মোটরসাইকেল গ্যারেজ",
+      "Car Garage": "কার গ্যারেজ",
+      // Sell types
+      "Flat Sell": "ফ্ল্যাট বিক্রি",
+      "Shop Sell": "দোকান বিক্রি",
+      "Office/Commercial Space Sell": "অফিস/কমার্শিয়াল স্পেস বিক্রি",
+      "Building With Land Sell": "জমিসহ ভবন বিক্রি",
+      "Land Sell": "জমি বিক্রি",
+      "Motorcycle Garage Sell": "মোটরসাইকেল গ্যারেজ বিক্রি",
+      "Car Garage Sell": "কার গ্যারেজ বিক্রি",
+      // Legacy types (kept so older listings still show a label)
       Apartment: "অ্যাপার্টমেন্ট",
       Duplex: "ডুপ্লেক্স",
       Land: "জমি",
       "Commercial Space": "কমার্শিয়াল স্পেস",
       "Office Space": "অফিস স্পেস",
-      Shop: "দোকান",
-    },
+    } as Record<string, string>,
     topbar: {
       browseTypes: "প্রপার্টি টাইপ ব্রাউজ করুন",
       allListings: "সব লিস্টিং",
