@@ -2,7 +2,7 @@ import ModerationQueue from "@/components/admin/ModerationQueue";
 import { requireModerator } from "@/lib/admin-auth";
 
 export default async function AdminModerationRoute() {
-  await requireModerator();
+  const admin = await requireModerator();
 
-  return <ModerationQueue />;
+  return <ModerationQueue adminUid={admin.uid} adminName={admin.email} />;
 }

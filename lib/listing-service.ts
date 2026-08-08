@@ -195,18 +195,32 @@ export async function deleteListing(id: string) {
   return deleteDoc(doc(db, LISTINGS_COLLECTION, id));
 }
 
+/**
+ * Sets a listing's status. When called with `moderator` (approve/reject from
+ * the moderation queue or admin posts page), it also records who did it and
+ * when — powers the "who approved what, how fast" admin report.
+ */
 export async function markListingStatus(
   id: string,
-  status: Listing["status"]
+  status: Listing["status"],
+  moderator?: { uid: string; name: string }
 ) {
   if (!db) {
     throw new Error("Listing data is not available.");
   }
 
-  return updateDoc(doc(db, LISTINGS_COLLECTION, id), {
+  const updates: Record<string, unknown> = {
     status,
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (moderator && (status === "active" || status === "rejected")) {
+    updates.moderatedBy = moderator.uid;
+    updates.moderatedByName = moderator.name;
+    updates.moderatedAt = serverTimestamp();
+  }
+
+  return updateDoc(doc(db, LISTINGS_COLLECTION, id), updates);
 }
 
 /**

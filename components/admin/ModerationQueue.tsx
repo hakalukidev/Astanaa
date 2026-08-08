@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { deleteListing, markListingStatus, subscribeToListingsByStatus } from "@/lib/listing-service";
 import {
+  formatDurationMs,
   formatListingPrice,
   getPrimaryListingPhotoUrl,
   type Listing,
@@ -22,7 +23,12 @@ const TABS: { value: ListingStatus; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
-export default function ModerationQueue() {
+type ModerationQueueProps = {
+  adminUid: string;
+  adminName: string;
+};
+
+export default function ModerationQueue({ adminUid, adminName }: ModerationQueueProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<ListingStatus>("pending");
   const [listings, setListings] = useState<Listing[]>([]);
@@ -42,7 +48,7 @@ export default function ModerationQueue() {
   async function handleApprove(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "active");
+      await markListingStatus(listing.id, "active", { uid: adminUid, name: adminName });
       toast({ title: "Listing approved", description: listing.title });
     } catch {
       toast({ title: "Could not approve listing", variant: "destructive" });
@@ -54,7 +60,7 @@ export default function ModerationQueue() {
   async function handleReject(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "rejected");
+      await markListingStatus(listing.id, "rejected", { uid: adminUid, name: adminName });
       toast({ title: "Listing rejected", description: listing.title });
     } catch {
       toast({ title: "Could not reject listing", variant: "destructive" });
@@ -167,6 +173,15 @@ export default function ModerationQueue() {
                       <p className="mt-0.5 text-xs text-slate-500">
                         by {listing.sellerName || "Unknown"} · {listing.sellerPhone}
                       </p>
+                      {listing.moderatedByName && listing.moderatedAtMs ? (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {listing.status === "rejected" ? "Rejected" : "Approved"} by{" "}
+                          {listing.moderatedByName}
+                          {listing.createdAtMs
+                            ? ` in ${formatDurationMs(listing.moderatedAtMs - listing.createdAtMs)}`
+                            : ""}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">

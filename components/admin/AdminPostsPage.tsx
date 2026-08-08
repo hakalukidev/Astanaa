@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { type AdminRole } from "@/lib/admin-auth";
 import { deleteListing, markListingStatus, subscribeToAllListingsForAdmin } from "@/lib/listing-service";
 import {
+  formatDurationMs,
   formatListingPrice,
   getPrimaryListingPhotoUrl,
   type Listing,
@@ -42,9 +43,11 @@ const STATUS_BADGE_STYLES: Record<ListingStatus, string> = {
 
 type AdminPostsPageProps = {
   role: AdminRole;
+  adminUid: string;
+  adminName: string;
 };
 
-export default function AdminPostsPage({ role }: AdminPostsPageProps) {
+export default function AdminPostsPage({ role, adminUid, adminName }: AdminPostsPageProps) {
   const { toast } = useToast();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +95,7 @@ export default function AdminPostsPage({ role }: AdminPostsPageProps) {
   async function handleApprove(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "active");
+      await markListingStatus(listing.id, "active", { uid: adminUid, name: adminName });
       toast({ title: "Listing approved", description: listing.title });
     } catch {
       toast({ title: "Could not approve listing", variant: "destructive" });
@@ -104,7 +107,7 @@ export default function AdminPostsPage({ role }: AdminPostsPageProps) {
   async function handleReject(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "rejected");
+      await markListingStatus(listing.id, "rejected", { uid: adminUid, name: adminName });
       toast({ title: "Listing rejected", description: listing.title });
     } catch {
       toast({ title: "Could not reject listing", variant: "destructive" });
@@ -271,6 +274,15 @@ export default function AdminPostsPage({ role }: AdminPostsPageProps) {
                       <p className="mt-0.5 text-xs text-slate-500">
                         by {listing.sellerName || "Unknown"} · {listing.sellerPhone}
                       </p>
+                      {listing.moderatedByName && listing.moderatedAtMs ? (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {listing.status === "rejected" ? "Rejected" : "Approved"} by{" "}
+                          {listing.moderatedByName}
+                          {listing.createdAtMs
+                            ? ` in ${formatDurationMs(listing.moderatedAtMs - listing.createdAtMs)}`
+                            : ""}
+                        </p>
+                      ) : null}
                     </div>
 
                     {canApprove ? (

@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  BarChart3,
   ClipboardCheck,
   FileText,
   FolderTree,
@@ -20,6 +21,11 @@ const catalogItems = [
     href: "/admin/posts",
     label: "All Posts",
     icon: Megaphone,
+  },
+  {
+    href: "/admin/reports",
+    label: "Reports",
+    icon: BarChart3,
   },
   {
     href: "/admin/slides",

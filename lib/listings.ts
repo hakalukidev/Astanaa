@@ -62,11 +62,22 @@ export type Listing = {
   boost: ListingBoost;
   createdAtMs: number | null;
   updatedAtMs: number | null;
+  /** Who last approved/rejected this listing, and when — set by markListingStatus(). */
+  moderatedBy: string;
+  moderatedByName: string;
+  moderatedAtMs: number | null;
 };
 
 export type ListingInput = Omit<
   Listing,
-  "id" | "boost" | "status" | "createdAtMs" | "updatedAtMs"
+  | "id"
+  | "boost"
+  | "status"
+  | "createdAtMs"
+  | "updatedAtMs"
+  | "moderatedBy"
+  | "moderatedByName"
+  | "moderatedAtMs"
 >;
 
 type ListingSnapshot =
@@ -166,6 +177,10 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     },
     createdAtMs: getTimestampMs(data.createdAt),
     updatedAtMs: getTimestampMs(data.updatedAt),
+    moderatedBy: typeof data.moderatedBy === "string" ? data.moderatedBy : "",
+    moderatedByName:
+      typeof data.moderatedByName === "string" ? data.moderatedByName : "",
+    moderatedAtMs: getTimestampMs(data.moderatedAt),
   };
 }
 
@@ -249,4 +264,35 @@ export function formatListingPostedAt(
     month: "short",
     year: "numeric",
   }).format(createdAtMs);
+}
+
+/**
+ * Compact "how long it took" duration, e.g. "45m", "3h 20m", "2d 5h" — used
+ * to show how long a moderator took between a listing being submitted and
+ * approved/rejected.
+ */
+export function formatDurationMs(durationMs: number) {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    return "";
+  }
+
+  const totalMinutes = Math.floor(durationMs / (60 * 1000));
+
+  if (totalMinutes < 1) {
+    return "<1m";
+  }
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  }
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  return `${minutes}m`;
 }

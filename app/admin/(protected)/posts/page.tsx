@@ -4,5 +4,5 @@ import { requireStaffAdmin } from "@/lib/admin-auth";
 export default async function AdminPostsRoute() {
   const admin = await requireStaffAdmin();
 
-  return <AdminPostsPage role={admin.role} />;
+  return <AdminPostsPage role={admin.role} adminUid={admin.uid} adminName={admin.email} />;
 }

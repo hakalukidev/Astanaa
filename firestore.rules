@@ -74,6 +74,17 @@ service cloud.firestore {
       allow write: if isStaffAdmin();
     }
 
+    // --- siteVisits ----------------------------------------------------------
+    // One doc per calendar day (id "YYYY-MM-DD"), { count: number }. Any visitor
+    // (including signed-out ones) can bump today's counter, but the write is
+    // constrained to just that one integer field — no arbitrary data. Only
+    // staff admins can read the totals (powers the visits report).
+    match /siteVisits/{dayId} {
+      allow read: if isStaffAdmin();
+      allow write: if request.resource.data.keys().hasOnly(['count'])
+        && request.resource.data.count is int;
+    }
+
     // --- users -----------------------------------------------------------
     // Each user can read/write only their own profile document.
     match /users/{userId} {
