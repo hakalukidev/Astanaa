@@ -10,6 +10,7 @@ import {
   LayoutPanelTop,
   Megaphone,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,6 +28,11 @@ const catalogItems = [
     href: "/admin/reports",
     label: "Reports",
     icon: BarChart3,
+  },
+  {
+    href: "/admin/site-users",
+    label: "Users",
+    icon: Users,
   },
   {
     href: "/admin/slides",

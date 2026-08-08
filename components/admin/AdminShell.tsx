@@ -19,7 +19,7 @@ export default async function AdminShell({ children }: AdminShellProps) {
   return (
     <div className="min-h-screen bg-blue-950 text-blue-100">
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="border-b border-blue-800 bg-blue-950/95 px-6 py-8 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:border-b-0 lg:border-r">
+        <aside className="border-b border-blue-800 bg-blue-950/95 px-6 py-8 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r">
           <div className="flex min-h-full flex-col gap-6">
             <div className="space-y-3">
               <span className="inline-flex rounded-full border border-blue-700 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-blue-300">
