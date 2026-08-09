@@ -101,12 +101,14 @@ service cloud.firestore {
       allow create: if canModerateListings();
     }
 
-    // --- locationEntries -----------------------------------------------------
-    // Admin-added divisions/districts/upazilas/areas layered on top of the
-    // built-in BD_LOCATIONS dataset (lib/bd-locations.ts). Public read so the
-    // post-ad location picker works for everyone; only staff-admin can add or
-    // remove entries.
-    match /locationEntries/{entryId} {
+    // --- locationNodes -----------------------------------------------------
+    // The whole location tree (Division -> District -> Upazila -> Area -> ...,
+    // unlimited depth via parentId) lives here — including every built-in
+    // division/district/upazila, seeded in by the admin Locations page on
+    // first visit (lib/location-nodes.ts). Public read so the post-ad
+    // location picker works for everyone; only staff-admin can add, edit, or
+    // remove nodes.
+    match /locationNodes/{nodeId} {
       allow read: if true;
       allow write: if isStaffAdmin();
     }

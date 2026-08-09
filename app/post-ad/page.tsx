@@ -47,6 +47,7 @@ export default function PostAdPage() {
     locationDistrict: "",
     locationUpazila: "",
     locationArea: "",
+    locationExtra: [],
   });
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
@@ -154,6 +155,7 @@ export default function PostAdPage() {
         locationDistrict: location.locationDistrict,
         locationUpazila: location.locationUpazila,
         locationArea: location.locationArea.trim(),
+        locationExtra: location.locationExtra,
         bedrooms: bedrooms ? Number(bedrooms) : null,
         bathrooms: bathrooms ? Number(bathrooms) : null,
         areaSqft: areaSqft ? Number(areaSqft) : null,
@@ -297,7 +299,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
-                  <LocationCascadeSelect value={location} onChange={setLocation} required />
+                  <LocationCascadeSelect value={location} onChange={setLocation} />
                 </div>
 
                 <div className="space-y-2">

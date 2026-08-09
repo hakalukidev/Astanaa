@@ -47,15 +47,39 @@ import {
 } from '@/lib/property-type-categories';
 import { translations } from '@/lib/site-translations';
 
-const LANGUAGE_FLAG: Record<'bn' | 'en', string> = {
-  bn: '🇧🇩',
-  en: '🇺🇸',
-};
-
 const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
   bn: 'বাং',
   en: 'En',
 };
+
+/**
+ * Inline SVG flags instead of flag emoji (🇧🇩/🇺🇸) — emoji flags depend on the
+ * OS having a font that renders regional-indicator pairs as a flag glyph.
+ * Windows doesn't ship one by default, so they show blank/as letters there;
+ * an SVG renders identically on every device.
+ */
+function FlagIcon({ language, className }: { language: 'bn' | 'en'; className?: string }) {
+  if (language === 'bn') {
+    return (
+      <svg viewBox="0 0 36 24" className={className} aria-hidden="true">
+        <rect width="36" height="24" fill="#006A4E" />
+        <circle cx="16" cy="12" r="7" fill="#F42A41" />
+      </svg>
+    );
+  }
+
+  const stripeHeight = 24 / 13;
+
+  return (
+    <svg viewBox="0 0 36 24" className={className} aria-hidden="true">
+      <rect width="36" height="24" fill="#B22234" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <rect key={i} x={0} y={(i * 2 + 1) * stripeHeight} width="36" height={stripeHeight} fill="#fff" />
+      ))}
+      <rect x="0" y="0" width="16" height={7 * stripeHeight} fill="#3C3B6E" />
+    </svg>
+  );
+}
 
 /** Icon shown before each property-type row in the Browse menu — falls back to Building2. */
 const PROPERTY_TYPE_ICONS: Record<string, LucideIcon> = {
@@ -88,7 +112,7 @@ function LanguageToggle({ compact = false }: { compact?: boolean }) {
         compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-xs lg:text-sm'
       }`}
     >
-      <span aria-hidden="true">{LANGUAGE_FLAG[language]}</span>
+      <FlagIcon language={language} className="h-3 w-4 shrink-0 rounded-sm" />
       {LANGUAGE_SHORT_LABEL[language]}
     </button>
   );

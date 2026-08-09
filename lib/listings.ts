@@ -47,6 +47,8 @@ export type Listing = {
   locationDistrict: string;
   locationUpazila: string;
   locationArea: string;
+  /** Anything an admin nested deeper than Area in the location tree (e.g. Road, Goli). */
+  locationExtra: string[];
   bedrooms: number | null;
   bathrooms: number | null;
   areaSqft: number | null;
@@ -142,6 +144,7 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     locationUpazila:
       typeof data.locationUpazila === "string" ? data.locationUpazila : "",
     locationArea: typeof data.locationArea === "string" ? data.locationArea : "",
+    locationExtra: toStringArray(data.locationExtra),
     bedrooms: toNullableNumber(data.bedrooms),
     bathrooms: toNullableNumber(data.bathrooms),
     areaSqft: toNullableNumber(data.areaSqft),
@@ -178,14 +181,16 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
   };
 }
 
-/** Joins the cascading location parts (division, district, upazila/thana, para/mohalla) into one display string, narrowest first. */
+/** Joins the cascading location parts (division, district, upazila/thana, para/mohalla, ...) into one display string, narrowest first. */
 export function formatListingLocation(parts: {
   locationDivision: string;
   locationDistrict: string;
   locationUpazila: string;
   locationArea: string;
+  locationExtra?: string[];
 }) {
   return [
+    ...(parts.locationExtra ?? []).slice().reverse(),
     parts.locationArea,
     parts.locationUpazila,
     parts.locationDistrict,
