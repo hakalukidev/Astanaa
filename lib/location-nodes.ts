@@ -62,21 +62,78 @@ export function childrenOf(nodes: LocationNode[], parentId: string | null): Loca
     .sort((left, right) => left.order - right.order || left.en.localeCompare(right.en));
 }
 
+/** Every fallback node's id starts with this — lets callers tell "seed data" from real Firestore docs. */
+const FALLBACK_ID_PREFIX = "seed-";
+
+export function isFallbackNode(node: LocationNode) {
+  return node.id.startsWith(FALLBACK_ID_PREFIX);
+}
+
 /**
- * Public — the post-ad location picker needs the full tree. Falls back to an
- * empty list on any read failure (rules not deployed yet, offline, etc.) so
- * the UI shows "no locations yet" instead of spinning forever.
+ * Division -> District -> Upazila from the built-in BD_LOCATIONS, flattened
+ * into the same LocationNode shape, used whenever Firestore has nothing yet
+ * (or a read fails) so the picker is never empty. Every id is prefixed
+ * "seed-" so callers (like the admin page) can tell this apart from real,
+ * editable Firestore docs and trigger the one-time import instead of trying
+ * to edit/delete a node that doesn't actually exist yet.
+ */
+const FALLBACK_LOCATION_NODES: LocationNode[] = (() => {
+  const nodes: LocationNode[] = [];
+
+  BD_LOCATIONS.forEach((division, divisionIndex) => {
+    const divisionId = `${FALLBACK_ID_PREFIX}division-${divisionIndex}`;
+    nodes.push({ id: divisionId, parentId: null, en: division.en, bn: division.bn, order: divisionIndex, createdAtMs: null });
+
+    division.districts.forEach((district, districtIndex) => {
+      const districtId = `${FALLBACK_ID_PREFIX}district-${divisionIndex}-${districtIndex}`;
+      nodes.push({
+        id: districtId,
+        parentId: divisionId,
+        en: district.en,
+        bn: district.bn,
+        order: districtIndex,
+        createdAtMs: null,
+      });
+
+      district.upazilas.forEach((upazila, upazilaIndex) => {
+        nodes.push({
+          id: `${FALLBACK_ID_PREFIX}upazila-${divisionIndex}-${districtIndex}-${upazilaIndex}`,
+          parentId: districtId,
+          en: upazila.en,
+          bn: upazila.bn,
+          order: upazilaIndex,
+          createdAtMs: null,
+        });
+      });
+    });
+  });
+
+  return nodes;
+})();
+
+/**
+ * Public — the post-ad location picker needs the full tree. Falls back to
+ * the built-in Division/District/Upazila list (see FALLBACK_LOCATION_NODES
+ * above) if Firestore has nothing yet or the read fails for any reason
+ * (rules not deployed, offline, etc.) — the picker must never come back
+ * empty, or posting an ad becomes impossible.
  */
 export function subscribeToLocationNodes(callback: (nodes: LocationNode[]) => void) {
   if (!db) {
-    callback([]);
+    callback(FALLBACK_LOCATION_NODES);
     return () => {};
   }
 
   return onSnapshot(
     collection(db, LOCATION_NODES_COLLECTION),
-    (snapshot) => callback(snapshot.docs.map(mapNode)),
-    () => callback([])
+    (snapshot) => {
+      if (snapshot.empty) {
+        callback(FALLBACK_LOCATION_NODES);
+        return;
+      }
+      callback(snapshot.docs.map(mapNode));
+    },
+    () => callback(FALLBACK_LOCATION_NODES)
   );
 }
 

@@ -11,6 +11,7 @@ import {
   addLocationNode,
   childrenOf,
   deleteLocationNode,
+  isFallbackNode,
   seedBuiltInLocations,
   subscribeToLocationNodes,
   updateLocationNode,
@@ -90,6 +91,7 @@ function LocationItemRow({
   const [bn, setBn] = useState(node.bn);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isPlaceholder = isFallbackNode(node);
 
   async function handleSave() {
     if (!en.trim() || !bn.trim()) {
@@ -150,25 +152,31 @@ function LocationItemRow({
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate text-left">
         {node.en} <span className={isSelected ? "text-white/80" : "text-gray-400"}>({node.bn})</span>
       </button>
-      <span className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className={`rounded p-1 ${isSelected ? "hover:bg-white/20" : "hover:bg-gray-200"}`}
-          aria-label="Edit"
-        >
-          <Pencil className="h-3 w-3" />
-        </button>
-        <button
-          type="button"
-          onClick={handleDeleteClick}
-          disabled={isDeleting}
-          className={`rounded p-1 ${isSelected ? "hover:bg-white/20" : "hover:bg-red-100 hover:text-red-600"}`}
-          aria-label="Delete"
-        >
-          {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-        </button>
-      </span>
+      {isPlaceholder ? (
+        <span className="shrink-0 text-[10px] italic text-gray-400" title="Still being imported — try again in a moment">
+          setting up...
+        </span>
+      ) : (
+        <span className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className={`rounded p-1 ${isSelected ? "hover:bg-white/20" : "hover:bg-gray-200"}`}
+            aria-label="Edit"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            disabled={isDeleting}
+            className={`rounded p-1 ${isSelected ? "hover:bg-white/20" : "hover:bg-red-100 hover:text-red-600"}`}
+            aria-label="Delete"
+          >
+            {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+          </button>
+        </span>
+      )}
     </li>
   );
 }
@@ -231,8 +239,15 @@ export default function AdminLocationsPage() {
     return unsubscribe;
   }, []);
 
+  // subscribeToLocationNodes always returns *something* — either real
+  // Firestore docs or (if the collection is genuinely still empty) the
+  // built-in Division/District/Upazila list as read-only placeholders — so
+  // "not seeded yet" means every node currently loaded is a placeholder,
+  // not that the list is empty.
+  const notYetSeeded = nodes.length > 0 && nodes.every(isFallbackNode);
+
   useEffect(() => {
-    if (isLoading || hasTriggeredSeed.current || nodes.length > 0) {
+    if (isLoading || hasTriggeredSeed.current || !notYetSeeded) {
       return;
     }
     hasTriggeredSeed.current = true;
@@ -243,7 +258,7 @@ export default function AdminLocationsPage() {
         hasTriggeredSeed.current = false;
       })
       .finally(() => setIsSeeding(false));
-  }, [isLoading, nodes.length]);
+  }, [isLoading, notYetSeeded]);
 
   // Selections can go stale once nodes are deleted/renamed elsewhere — drop
   // anything in the path that no longer exists.
@@ -264,8 +279,16 @@ export default function AdminLocationsPage() {
   const columnCount = selectedPath.length + 1;
 
   async function handleAddAt(depth: number, en: string, bn: string) {
-    const parentId = depth === 0 ? null : selectedPath[depth - 1]?.id ?? null;
-    await addLocationNode({ parentId, en, bn });
+    const parent = depth === 0 ? null : selectedPath[depth - 1];
+    if (parent && isFallbackNode(parent)) {
+      toast({
+        title: "Still setting up",
+        description: "This division/district hasn't finished importing yet — try again shortly.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await addLocationNode({ parentId: parent?.id ?? null, en, bn });
   }
 
   function handleSelectAt(depth: number, node: LocationNode) {
@@ -304,19 +327,27 @@ export default function AdminLocationsPage() {
                 : "Loading locations..."}
             </div>
           ) : (
-            <div className="flex gap-0 overflow-x-auto rounded-md border border-gray-200 divide-x divide-gray-200">
-              {columns.map(({ depth, items }) => (
-                <LocationColumn
-                  key={depth}
-                  depth={depth}
-                  items={items}
-                  nodes={nodes}
-                  selectedId={selectedPath[depth]?.id ?? null}
-                  onSelect={(node) => handleSelectAt(depth, node)}
-                  onAdd={(en, bn) => handleAddAt(depth, en, bn)}
-                />
-              ))}
-            </div>
+            <>
+              {notYetSeeded && (
+                <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Couldn&apos;t set up the built-in locations — showing them read-only below.
+                  Double-check <code>firestore.rules</code> is deployed, then reload this page to try again.
+                </p>
+              )}
+              <div className="flex gap-0 overflow-x-auto rounded-md border border-gray-200 divide-x divide-gray-200">
+                {columns.map(({ depth, items }) => (
+                  <LocationColumn
+                    key={depth}
+                    depth={depth}
+                    items={items}
+                    nodes={nodes}
+                    selectedId={selectedPath[depth]?.id ?? null}
+                    onSelect={(node) => handleSelectAt(depth, node)}
+                    onAdd={(en, bn) => handleAddAt(depth, en, bn)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
