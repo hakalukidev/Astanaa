@@ -53,6 +53,27 @@ const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
 };
 
 /**
+ * Renders both language versions of a label stacked in the same grid cell (one
+ * hidden via `invisible`, not `hidden`, so it still takes up space). The box
+ * ends up sized for whichever language is wider, in *both* languages, so
+ * toggling language never resizes the button around the text — only the
+ * visible text swaps.
+ */
+function BilingualLabel({ en, bn }: { en: string; bn: string }) {
+  const { language } = useLanguage();
+  return (
+    <span className="grid">
+      <span className={`col-start-1 row-start-1 whitespace-nowrap ${language === 'en' ? '' : 'invisible'}`}>
+        {en}
+      </span>
+      <span className={`col-start-1 row-start-1 whitespace-nowrap ${language === 'bn' ? '' : 'invisible'}`}>
+        {bn}
+      </span>
+    </span>
+  );
+}
+
+/**
  * Inline SVG flags instead of flag emoji (🇧🇩/🇺🇸) — emoji flags depend on the
  * OS having a font that renders regional-indicator pairs as a flag glyph.
  * Windows doesn't ship one by default, so they show blank/as letters there;
@@ -113,7 +134,7 @@ function LanguageToggle({ compact = false }: { compact?: boolean }) {
       }`}
     >
       <FlagIcon language={language} className="h-3 w-4 shrink-0 rounded-sm" />
-      {LANGUAGE_SHORT_LABEL[language]}
+      <BilingualLabel en={LANGUAGE_SHORT_LABEL.en} bn={LANGUAGE_SHORT_LABEL.bn} />
     </button>
   );
 }
@@ -418,7 +439,7 @@ export default function TopBar() {
               className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-1.5 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <Menu size={15} />
-              {t.topbar.allListings}
+              <BilingualLabel en={translations.en.topbar.allListings} bn={translations.bn.topbar.allListings} />
               <ChevronDown size={13} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -476,7 +497,7 @@ export default function TopBar() {
             href="/post-ad"
             className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-mint px-4 py-1.5 text-sm font-semibold text-brand-navy transition hover:brightness-95 whitespace-nowrap"
           >
-            <Plus size={15} /> {t.topbar.postAd}
+            <Plus size={15} /> <BilingualLabel en={translations.en.topbar.postAd} bn={translations.bn.topbar.postAd} />
           </Link>
 
           {user && (
