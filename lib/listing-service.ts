@@ -21,6 +21,7 @@ import {
   type Listing,
   type ListingInput,
 } from "@/lib/listings";
+import { createListingStatusNotification } from "@/lib/notifications";
 
 function getListingsCollection() {
   if (!db) {
@@ -198,10 +199,11 @@ export async function deleteListing(id: string) {
 /**
  * Sets a listing's status. When called with `moderator` (approve/reject from
  * the moderation queue or admin posts page), it also records who did it and
- * when — powers the "who approved what, how fast" admin report.
+ * when — powers the "who approved what, how fast" admin report — and notifies
+ * the seller that their listing was approved/rejected.
  */
 export async function markListingStatus(
-  id: string,
+  listing: Pick<Listing, "id" | "sellerId" | "title">,
   status: Listing["status"],
   moderator?: { uid: string; name: string }
 ) {
@@ -214,13 +216,25 @@ export async function markListingStatus(
     updatedAt: serverTimestamp(),
   };
 
-  if (moderator && (status === "active" || status === "rejected")) {
+  const isModeratedDecision = moderator && (status === "active" || status === "rejected");
+
+  if (isModeratedDecision) {
     updates.moderatedBy = moderator.uid;
     updates.moderatedByName = moderator.name;
     updates.moderatedAt = serverTimestamp();
   }
 
-  return updateDoc(doc(db, LISTINGS_COLLECTION, id), updates);
+  await updateDoc(doc(db, LISTINGS_COLLECTION, listing.id), updates);
+
+  if (isModeratedDecision) {
+    // Best-effort — a failed notification shouldn't undo the moderation action.
+    await createListingStatusNotification({
+      userId: listing.sellerId,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      type: status === "active" ? "listing_approved" : "listing_rejected",
+    }).catch(() => {});
+  }
 }
 
 /**

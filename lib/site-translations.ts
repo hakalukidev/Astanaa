@@ -47,6 +47,14 @@ export const translations = {
       logIn: "Log in",
       signUp: "Sign up",
     },
+    notifications: {
+      title: "Notifications",
+      markAllRead: "Mark all read",
+      empty: "No notifications yet",
+      approvedPrefix: "Your listing",
+      approvedSuffix: "was approved",
+      rejectedSuffix: "was rejected",
+    },
     about: {
       heroTitle: "YOUR TRUSTED APARTMENT MARKETPLACE",
       heroSubtitle: "BUY, SELL & RENT APARTMENTS ACROSS BANGLADESH",
@@ -308,6 +316,14 @@ export const translations = {
       logOut: "লগ আউট",
       logIn: "লগ ইন",
       signUp: "সাইন আপ",
+    },
+    notifications: {
+      title: "নোটিফিকেশন",
+      markAllRead: "সব পঠিত হিসেবে চিহ্নিত করুন",
+      empty: "এখনো কোনো নোটিফিকেশন নেই",
+      approvedPrefix: "আপনার লিস্টিং",
+      approvedSuffix: "অনুমোদন করা হয়েছে",
+      rejectedSuffix: "প্রত্যাখ্যান করা হয়েছে",
     },
     about: {
       heroTitle: "আপনার বিশ্বস্ত অ্যাপার্টমেন্ট মার্কেটপ্লেস",

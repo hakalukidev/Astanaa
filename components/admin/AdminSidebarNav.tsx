@@ -8,6 +8,7 @@ import {
   FolderTree,
   Image,
   LayoutPanelTop,
+  MapPin,
   Megaphone,
   ShieldCheck,
   Users,
@@ -43,6 +44,11 @@ const catalogItems = [
     href: "/admin/categories",
     label: "Categories & Sub Categories",
     icon: FolderTree,
+  },
+  {
+    href: "/admin/locations",
+    label: "Locations",
+    icon: MapPin,
   },
   {
     href: "/admin/terms",

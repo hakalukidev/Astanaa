@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Bell,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -18,7 +19,13 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { PROPERTY_TYPES_BY_PURPOSE, type ListingPurpose } from '@/lib/listings';
+import { formatListingPostedAt, PROPERTY_TYPES_BY_PURPOSE, type ListingPurpose } from '@/lib/listings';
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+  subscribeToUserNotifications,
+  type AppNotification,
+} from '@/lib/notifications';
 import { translations } from '@/lib/site-translations';
 
 const LANGUAGE_FLAG: Record<'bn' | 'en', string> = {
@@ -106,6 +113,113 @@ function PropertyTypeGroup({
   );
 }
 
+type NotificationLabels = {
+  title: string;
+  markAllRead: string;
+  empty: string;
+  approvedPrefix: string;
+  approvedSuffix: string;
+  rejectedSuffix: string;
+};
+
+function getNotificationMessage(notification: AppNotification, labels: NotificationLabels) {
+  const suffix = notification.type === 'listing_rejected' ? labels.rejectedSuffix : labels.approvedSuffix;
+  return `${labels.approvedPrefix} "${notification.listingTitle}" ${suffix}`;
+}
+
+/** Presentational bell + dropdown — notification data/handlers live in TopBar so the single
+ * Firestore subscription is shared between the desktop and mobile trees (both mounted at once). */
+function NotificationBell({
+  notifications,
+  unreadCount,
+  isOpen,
+  onToggle,
+  onMarkAllRead,
+  onSelectNotification,
+  labels,
+  language,
+  timeLabels,
+  dropdownRef,
+}: {
+  notifications: AppNotification[];
+  unreadCount: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  onMarkAllRead: () => void;
+  onSelectNotification: (notification: AppNotification) => void;
+  labels: NotificationLabels;
+  language: 'en' | 'bn';
+  timeLabels: Parameters<typeof formatListingPostedAt>[2];
+  dropdownRef: React.RefObject<HTMLDivElement>;
+}) {
+  return (
+    <div className="relative shrink-0" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={labels.title}
+        className="relative flex items-center border border-white/25 hover:bg-white/10 p-1.5 rounded text-sm font-semibold text-white transition"
+      >
+        <Bell size={17} />
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
+            <span className="text-sm font-semibold text-brand-navy">{labels.title}</span>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={onMarkAllRead}
+                className="text-xs font-medium text-brand-mint hover:underline"
+              >
+                {labels.markAllRead}
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">{labels.empty}</p>
+            ) : (
+              <ul>
+                {notifications.map((notification) => (
+                  <li key={notification.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectNotification(notification)}
+                      className={`block w-full border-b border-gray-50 px-4 py-3 text-left text-sm transition hover:bg-brand-mint/10 ${
+                        notification.read ? 'text-gray-500' : 'bg-blue-50/60 font-medium text-gray-800'
+                      }`}
+                    >
+                      <span className="flex items-start gap-2">
+                        {!notification.read && (
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-mint" />
+                        )}
+                        <span>
+                          {getNotificationMessage(notification, labels)}
+                          <span className="mt-0.5 block text-xs text-gray-400">
+                            {formatListingPostedAt(notification.createdAtMs, language, timeLabels)}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TopBar() {
   const router = useRouter();
   const { language } = useLanguage();
@@ -117,8 +231,24 @@ export default function TopBar() {
   const [expandedGroup, setExpandedGroup] = useState<ListingPurpose | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const browseDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
+  // Two refs because the desktop and mobile bell each render their own trigger
+  // + panel, and both trees are mounted at once (only one is CSS-visible at a
+  // given viewport) — either one being clicked should count as "inside".
+  const notificationsDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileNotificationsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    return subscribeToUserNotifications(user.uid, setNotifications);
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -129,10 +259,32 @@ export default function TopBar() {
       if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target as Node)) {
         setIsAccountOpen(false);
       }
+      const target = event.target as Node;
+      const isInsideNotifications =
+        notificationsDropdownRef.current?.contains(target) ||
+        mobileNotificationsDropdownRef.current?.contains(target);
+      if (!isInsideNotifications) {
+        setIsNotificationsOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const unreadNotificationCount = notifications.filter((notification) => !notification.read).length;
+
+  function handleSelectNotification(notification: AppNotification) {
+    if (!notification.read) {
+      markNotificationRead(notification.id).catch(() => {});
+    }
+    setIsNotificationsOpen(false);
+    router.push(`/listings/${notification.listingId}`);
+  }
+
+  function handleMarkAllNotificationsRead() {
+    const unreadIds = notifications.filter((notification) => !notification.read).map((n) => n.id);
+    markAllNotificationsRead(unreadIds).catch(() => {});
+  }
 
   function closeBrowseMenu() {
     setIsBrowseOpen(false);
@@ -237,6 +389,21 @@ export default function TopBar() {
             <Plus size={15} /> {t.topbar.postAd}
           </Link>
 
+          {user && (
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadNotificationCount}
+              isOpen={isNotificationsOpen}
+              onToggle={() => setIsNotificationsOpen((open) => !open)}
+              onMarkAllRead={handleMarkAllNotificationsRead}
+              onSelectNotification={handleSelectNotification}
+              labels={t.notifications}
+              language={language}
+              timeLabels={t.listings.time}
+              dropdownRef={notificationsDropdownRef}
+            />
+          )}
+
           <div className="relative shrink-0" ref={accountDropdownRef}>
             <button
               onClick={() => setIsAccountOpen(!isAccountOpen)}
@@ -289,6 +456,20 @@ export default function TopBar() {
             <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-1.5 hover:bg-white/10 rounded-full">
               <Search size={18} className="text-white" />
             </button>
+            {user && (
+              <NotificationBell
+                notifications={notifications}
+                unreadCount={unreadNotificationCount}
+                isOpen={isNotificationsOpen}
+                onToggle={() => setIsNotificationsOpen((open) => !open)}
+                onMarkAllRead={handleMarkAllNotificationsRead}
+                onSelectNotification={handleSelectNotification}
+                labels={t.notifications}
+                language={language}
+                timeLabels={t.listings.time}
+                dropdownRef={mobileNotificationsDropdownRef}
+              />
+            )}
             <Link href="/post-ad" className="p-1.5 hover:bg-white/10 rounded-full" aria-label="Post ad">
               <Plus size={18} className="text-brand-mint" />
             </Link>

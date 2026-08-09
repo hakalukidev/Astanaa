@@ -91,6 +91,26 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // --- notifications -----------------------------------------------------
+    // Each user reads and marks-read only their own notifications. Only a
+    // moderator+ can create one — right now that's just "your listing was
+    // approved/rejected" from the moderation queue, but this stays open to
+    // any future moderation-triggered notification without a rules change.
+    match /notifications/{notificationId} {
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if canModerateListings();
+    }
+
+    // --- locationEntries -----------------------------------------------------
+    // Admin-added divisions/districts/upazilas/areas layered on top of the
+    // built-in BD_LOCATIONS dataset (lib/bd-locations.ts). Public read so the
+    // post-ad location picker works for everyone; only staff-admin can add or
+    // remove entries.
+    match /locationEntries/{entryId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
     // --- listings ------------------------------------------------------
     // Anyone can read active listings; the owner can read their own listing
     // regardless of status (pending/rejected/sold); staff/moderators can read

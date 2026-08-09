@@ -95,7 +95,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
   async function handleApprove(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "active", { uid: adminUid, name: adminName });
+      await markListingStatus(listing, "active", { uid: adminUid, name: adminName });
       toast({ title: "Listing approved", description: listing.title });
     } catch {
       toast({ title: "Could not approve listing", variant: "destructive" });
@@ -107,7 +107,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
   async function handleReject(listing: Listing) {
     setPendingId(listing.id);
     try {
-      await markListingStatus(listing.id, "rejected", { uid: adminUid, name: adminName });
+      await markListingStatus(listing, "rejected", { uid: adminUid, name: adminName });
       toast({ title: "Listing rejected", description: listing.title });
     } catch {
       toast({ title: "Could not reject listing", variant: "destructive" });
