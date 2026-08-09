@@ -16,7 +16,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { createListing } from "@/lib/listing-service";
-import { formatListingLocation, PROPERTY_TYPES_BY_PURPOSE, type ListingPurpose } from "@/lib/listings";
+import { formatListingLocation, type ListingPurpose } from "@/lib/listings";
+import {
+  groupCategoriesByPurpose,
+  subscribeToPropertyTypeCategories,
+  type PropertyTypeCategory,
+} from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
 import { uploadListingImage } from "@/lib/upload-listing-image";
 
@@ -28,11 +33,13 @@ export default function PostAdPage() {
   const { toast } = useToast();
   const { language } = useLanguage();
   const t = translations[language].postAd;
-  const propertyTypeLabels = translations[language].propertyTypes;
+
+  const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
+  const categoriesByPurpose = groupCategoriesByPurpose(propertyTypeCategories);
 
   const [title, setTitle] = useState("");
   const [purpose, setPurpose] = useState<ListingPurpose>("sale");
-  const [propertyType, setPropertyType] = useState<string>(PROPERTY_TYPES_BY_PURPOSE.sale[0]);
+  const [propertyType, setPropertyType] = useState<string>("");
   const [price, setPrice] = useState("");
   const [negotiable, setNegotiable] = useState(false);
   const [location, setLocation] = useState<LocationCascadeValue>({
@@ -65,6 +72,18 @@ export default function PostAdPage() {
       router.replace("/login?next=/post-ad");
     }
   }, [loading, user, router]);
+
+  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+
+  // Keep propertyType valid whenever the category list loads or the chosen
+  // purpose changes (e.g. switching from Sale to Rent drops a sale-only type).
+  useEffect(() => {
+    const validTypes = categoriesByPurpose[purpose].map((category) => category.en);
+    if (validTypes.length > 0 && !validTypes.includes(propertyType)) {
+      setPropertyType(validTypes[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purpose, propertyTypeCategories]);
 
   async function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -230,11 +249,7 @@ export default function PostAdPage() {
                   <select
                     id="purpose"
                     value={purpose}
-                    onChange={(event) => {
-                      const nextPurpose = event.target.value as ListingPurpose;
-                      setPurpose(nextPurpose);
-                      setPropertyType(PROPERTY_TYPES_BY_PURPOSE[nextPurpose][0]);
-                    }}
+                    onChange={(event) => setPurpose(event.target.value as ListingPurpose)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="sale">{t.forSale}</option>
@@ -250,9 +265,9 @@ export default function PostAdPage() {
                     onChange={(event) => setPropertyType(event.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    {PROPERTY_TYPES_BY_PURPOSE[purpose].map((type) => (
-                      <option key={type} value={type}>
-                        {propertyTypeLabels[type] ?? type}
+                    {categoriesByPurpose[purpose].map((category) => (
+                      <option key={category.id} value={category.en}>
+                        {language === "bn" ? category.bn : category.en}
                       </option>
                     ))}
                   </select>

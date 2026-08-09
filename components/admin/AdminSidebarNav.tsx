@@ -11,6 +11,7 @@ import {
   MapPin,
   Megaphone,
   ShieldCheck,
+  Tags,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -49,6 +50,11 @@ const catalogItems = [
     href: "/admin/locations",
     label: "Locations",
     icon: MapPin,
+  },
+  {
+    href: "/admin/property-types",
+    label: "Property Type Categories",
+    icon: Tags,
   },
   {
     href: "/admin/terms",

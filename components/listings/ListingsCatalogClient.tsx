@@ -9,12 +9,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   formatCompactBDT,
   PRICE_BANDS,
-  PROPERTY_TYPES,
-  PROPERTY_TYPES_BY_PURPOSE,
   type Listing,
   type ListingPurpose,
   type PriceBand,
 } from "@/lib/listings";
+import {
+  subscribeToPropertyTypeCategories,
+  type PropertyTypeCategory,
+} from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
@@ -43,8 +45,8 @@ export default function ListingsCatalogClient({
   const searchParams = useSearchParams();
   const { language } = useLanguage();
   const t = translations[language].listings;
-  const propertyTypeLabels = translations[language].propertyTypes;
 
+  const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("search")?.trim() ?? "");
   const [selectedType, setSelectedType] = useState(searchParams?.get("type")?.trim() ?? "all");
   const [selectedPurpose, setSelectedPurpose] = useState<ListingPurpose | "all">(
@@ -63,6 +65,8 @@ export default function ListingsCatalogClient({
     setSelectedPurpose((searchParams?.get("purpose") as ListingPurpose | null) ?? "all");
   }, [searchParams]);
 
+  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (priceDropdownRef.current && !priceDropdownRef.current.contains(event.target as Node)) {
@@ -75,7 +79,15 @@ export default function ListingsCatalogClient({
 
   // Property types offered in the type dropdown narrow down to the chosen purpose
   // (a rent-only type like "Sublet" has no sale equivalent, and vice versa).
-  const visibleTypes = selectedPurpose === "all" ? PROPERTY_TYPES : PROPERTY_TYPES_BY_PURPOSE[selectedPurpose];
+  const visibleCategories =
+    selectedPurpose === "all"
+      ? propertyTypeCategories
+      : propertyTypeCategories.filter((category) => category.purpose === selectedPurpose);
+  const visibleTypes = visibleCategories.map((category) => category.en);
+  const categoryLabels: Record<string, string> = {};
+  for (const category of propertyTypeCategories) {
+    categoryLabels[category.en] = language === "bn" ? category.bn : category.en;
+  }
 
   // Everything except the price filter — reused both to filter the grid and to
   // compute a live "ads" count per price band, so those counts reflect the
@@ -169,7 +181,7 @@ export default function ListingsCatalogClient({
               <option value="all">{t.allPropertyTypes}</option>
               {visibleTypes.map((type) => (
                 <option key={type} value={type}>
-                  {propertyTypeLabels[type] ?? type}
+                  {categoryLabels[type] ?? type}
                 </option>
               ))}
             </select>
@@ -180,7 +192,11 @@ export default function ListingsCatalogClient({
                 const nextPurpose = event.target.value as ListingPurpose | "all";
                 setSelectedPurpose(nextPurpose);
                 const nextVisibleTypes =
-                  nextPurpose === "all" ? PROPERTY_TYPES : PROPERTY_TYPES_BY_PURPOSE[nextPurpose];
+                  nextPurpose === "all"
+                    ? propertyTypeCategories.map((category) => category.en)
+                    : propertyTypeCategories
+                        .filter((category) => category.purpose === nextPurpose)
+                        .map((category) => category.en);
                 if (!nextVisibleTypes.includes(selectedType)) {
                   setSelectedType("all");
                 }

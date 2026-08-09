@@ -2,30 +2,49 @@
 
 import {
   Bell,
+  Bike,
+  Briefcase,
+  Building,
+  Building2,
+  Car,
   ChevronDown,
   ChevronRight,
+  DoorOpen,
+  KeyRound,
+  LayoutGrid,
   LogOut,
   Menu,
   MessageCircle,
   Plus,
   Search,
+  Store,
+  Tag,
+  Trees,
   User,
+  Users,
+  Warehouse,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { formatListingPostedAt, PROPERTY_TYPES_BY_PURPOSE, type ListingPurpose } from '@/lib/listings';
+import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
 import {
   markAllNotificationsRead,
   markNotificationRead,
   subscribeToUserNotifications,
   type AppNotification,
 } from '@/lib/notifications';
+import {
+  groupCategoriesByPurpose,
+  subscribeToPropertyTypeCategories,
+  type PropertyTypeCategory,
+} from '@/lib/property-type-categories';
 import { translations } from '@/lib/site-translations';
 
 const LANGUAGE_FLAG: Record<'bn' | 'en', string> = {
@@ -36,6 +55,26 @@ const LANGUAGE_FLAG: Record<'bn' | 'en', string> = {
 const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
   bn: 'বাং',
   en: 'En',
+};
+
+/** Icon shown before each property-type row in the Browse menu — falls back to Building2. */
+const PROPERTY_TYPE_ICONS: Record<string, LucideIcon> = {
+  'Flat Rent': Building2,
+  Sublet: DoorOpen,
+  Roommate: Users,
+  Shop: Store,
+  'Office/Commercial Space': Briefcase,
+  'Sublet Office': DoorOpen,
+  Warehouse: Warehouse,
+  'Motorcycle Garage': Bike,
+  'Car Garage': Car,
+  'Flat Sell': Building2,
+  'Shop Sell': Store,
+  'Office/Commercial Space Sell': Briefcase,
+  'Building With Land Sell': Building,
+  'Land Sell': Trees,
+  'Motorcycle Garage Sell': Bike,
+  'Car Garage Sell': Car,
 };
 
 function LanguageToggle({ compact = false }: { compact?: boolean }) {
@@ -59,6 +98,7 @@ function LanguageToggle({ compact = false }: { compact?: boolean }) {
 function PropertyTypeGroup({
   purpose,
   label,
+  groupIcon: GroupIcon,
   types,
   propertyTypeLabels,
   isExpanded,
@@ -68,6 +108,7 @@ function PropertyTypeGroup({
 }: {
   purpose: ListingPurpose;
   label: string;
+  groupIcon: LucideIcon;
   types: readonly string[];
   propertyTypeLabels: Record<string, string>;
   isExpanded: boolean;
@@ -86,27 +127,34 @@ function PropertyTypeGroup({
           light ? 'text-brand-navy hover:bg-brand-mint/15' : 'text-white hover:text-brand-mint'
         }`}
       >
-        {label}
+        <span className="flex items-center gap-2">
+          <GroupIcon size={15} className="shrink-0" />
+          {label}
+        </span>
         <ChevronRight size={14} className={`shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
       </button>
 
       {isExpanded && (
         <ul className={light ? 'bg-gray-50 py-1' : 'ml-4 space-y-1 border-l-2 border-white/20 pl-3 py-1'}>
-          {types.map((type) => (
-            <li key={type}>
-              <button
-                type="button"
-                onClick={() => onSelect(type, purpose)}
-                className={`block w-full text-left text-sm transition ${
-                  light
-                    ? 'px-7 py-1.5 text-gray-600 hover:bg-brand-mint/15 hover:text-brand-navy'
-                    : 'py-1.5 text-white/75 hover:text-brand-mint'
-                }`}
-              >
-                {propertyTypeLabels[type] ?? type}
-              </button>
-            </li>
-          ))}
+          {types.map((type) => {
+            const TypeIcon = PROPERTY_TYPE_ICONS[type] ?? Building2;
+            return (
+              <li key={type}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(type, purpose)}
+                  className={`flex w-full items-center gap-2 text-left text-sm transition ${
+                    light
+                      ? 'px-7 py-1.5 text-gray-600 hover:bg-brand-mint/15 hover:text-brand-navy'
+                      : 'py-1.5 text-white/75 hover:text-brand-mint'
+                  }`}
+                >
+                  <TypeIcon size={14} className="shrink-0" />
+                  {propertyTypeLabels[type] ?? type}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -233,6 +281,7 @@ export default function TopBar() {
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const browseDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   // Two refs because the desktop and mobile bell each render their own trigger
@@ -249,6 +298,20 @@ export default function TopBar() {
 
     return subscribeToUserNotifications(user.uid, setNotifications);
   }, [user]);
+
+  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+
+  const categoriesByPurpose = useMemo(
+    () => groupCategoriesByPurpose(propertyTypeCategories),
+    [propertyTypeCategories]
+  );
+  const categoryLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const category of propertyTypeCategories) {
+      labels[category.en] = language === 'bn' ? category.bn : category.en;
+    }
+    return labels;
+  }, [propertyTypeCategories, language]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -331,7 +394,7 @@ export default function TopBar() {
               className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-1.5 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <Menu size={15} />
-              {t.topbar.browseTypes}
+              {t.topbar.allListings}
               <ChevronDown size={13} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -339,17 +402,19 @@ export default function TopBar() {
               <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                 <Link
                   href="/listings"
-                  className="block px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
                   onClick={closeBrowseMenu}
                 >
+                  <LayoutGrid size={15} className="shrink-0" />
                   {t.topbar.allListings}
                 </Link>
                 <div className="my-1 border-t border-gray-100" />
                 <PropertyTypeGroup
                   purpose="rent"
                   label={t.listings.forRent}
-                  types={PROPERTY_TYPES_BY_PURPOSE.rent}
-                  propertyTypeLabels={t.propertyTypes}
+                  groupIcon={KeyRound}
+                  types={categoriesByPurpose.rent.map((category) => category.en)}
+                  propertyTypeLabels={categoryLabels}
                   isExpanded={expandedGroup === 'rent'}
                   onToggle={() => toggleGroup('rent')}
                   onSelect={goToPropertyType}
@@ -358,8 +423,9 @@ export default function TopBar() {
                 <PropertyTypeGroup
                   purpose="sale"
                   label={t.listings.forSale}
-                  types={PROPERTY_TYPES_BY_PURPOSE.sale}
-                  propertyTypeLabels={t.propertyTypes}
+                  groupIcon={Tag}
+                  types={categoriesByPurpose.sale.map((category) => category.en)}
+                  propertyTypeLabels={categoryLabels}
                   isExpanded={expandedGroup === 'sale'}
                   onToggle={() => toggleGroup('sale')}
                   onSelect={goToPropertyType}
@@ -504,21 +570,23 @@ export default function TopBar() {
                 className="w-full flex items-center justify-between gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition"
               >
                 <span className="flex items-center gap-2">
-                  <Menu size={16} /> {t.topbar.browseTypes}
+                  <Menu size={16} /> {t.topbar.allListings}
                 </span>
                 <ChevronDown size={14} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isBrowseOpen && (
                 <div className="mt-2 ml-4 space-y-1 border-l-2 border-white/20 pl-3">
-                  <Link href="/listings" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={closeBrowseMenu}>
+                  <Link href="/listings" className="flex items-center gap-2 py-2 text-sm text-white/80 hover:text-brand-mint" onClick={closeBrowseMenu}>
+                    <LayoutGrid size={15} className="shrink-0" />
                     {t.topbar.allListings}
                   </Link>
                   <PropertyTypeGroup
                     purpose="rent"
                     label={t.listings.forRent}
-                    types={PROPERTY_TYPES_BY_PURPOSE.rent}
-                    propertyTypeLabels={t.propertyTypes}
+                    groupIcon={KeyRound}
+                    types={categoriesByPurpose.rent.map((category) => category.en)}
+                    propertyTypeLabels={categoryLabels}
                     isExpanded={expandedGroup === 'rent'}
                     onToggle={() => toggleGroup('rent')}
                     onSelect={goToPropertyType}
@@ -527,8 +595,9 @@ export default function TopBar() {
                   <PropertyTypeGroup
                     purpose="sale"
                     label={t.listings.forSale}
-                    types={PROPERTY_TYPES_BY_PURPOSE.sale}
-                    propertyTypeLabels={t.propertyTypes}
+                    groupIcon={Tag}
+                    types={categoriesByPurpose.sale.map((category) => category.en)}
+                    propertyTypeLabels={categoryLabels}
                     isExpanded={expandedGroup === 'sale'}
                     onToggle={() => toggleGroup('sale')}
                     onSelect={goToPropertyType}

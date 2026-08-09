@@ -111,6 +111,16 @@ service cloud.firestore {
       allow write: if isStaffAdmin();
     }
 
+    // --- propertyTypeCategories ---------------------------------------------
+    // The Rent/Sale category list shown in the Browse Property Types menu,
+    // post-ad form, and listings filter (lib/property-type-categories.ts).
+    // Public read so every visitor sees the current list; only staff-admin
+    // can add, edit, or remove categories.
+    match /propertyTypeCategories/{categoryId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
     // --- listings ------------------------------------------------------
     // Anyone can read active listings; the owner can read their own listing
     // regardless of status (pending/rejected/sold); staff/moderators can read
