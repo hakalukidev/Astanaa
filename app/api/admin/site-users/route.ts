@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAdmin, isStaffAdmin } from "@/lib/admin-auth";
 import { getAdminDb } from "@/lib/firebase-admin";
 
-export const USERS_COLLECTION = "users";
+const USERS_COLLECTION = "users";
 
 // GET - list every signed-up site user (buyers/sellers), oldest first.
 // Staff admin only (admin / super_admin) — goes through the Admin SDK so we
