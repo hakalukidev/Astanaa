@@ -56,10 +56,26 @@ function mapNode(snapshot: QueryDocumentSnapshot<DocumentData>): LocationNode {
   };
 }
 
+/**
+ * A division's own headquarters district (and similarly a district's own
+ * "Sadar" upazila) is often literally named after its parent — e.g. the
+ * Barishal division contains a Barishal district. That one is pinned first;
+ * everything else sorts alphabetically (dictionary order) by English name,
+ * regardless of the order nodes were added in.
+ */
 export function childrenOf(nodes: LocationNode[], parentId: string | null): LocationNode[] {
+  const parentName = parentId ? nodes.find((node) => node.id === parentId)?.en : undefined;
+
   return nodes
     .filter((node) => node.parentId === parentId)
-    .sort((left, right) => left.order - right.order || left.en.localeCompare(right.en));
+    .sort((left, right) => {
+      const leftPinned = parentName !== undefined && left.en === parentName;
+      const rightPinned = parentName !== undefined && right.en === parentName;
+      if (leftPinned !== rightPinned) {
+        return leftPinned ? -1 : 1;
+      }
+      return left.en.localeCompare(right.en);
+    });
 }
 
 /** Every fallback node's id starts with this — lets callers tell "seed data" from real Firestore docs. */

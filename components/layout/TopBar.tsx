@@ -19,9 +19,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import LocationCascadeSelect, { type LocationCascadeValue } from '@/components/listings/LocationCascadeSelect';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { subscribeToListingPurposes, type ListingPurposeRecord } from '@/lib/listing-purposes';
+import { childrenOf, subscribeToLocationNodes, type LocationNode } from '@/lib/location-nodes';
 import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
 import {
   markAllNotificationsRead,
@@ -176,6 +178,53 @@ function PropertyTypeGroup({
   );
 }
 
+const EMPTY_LOCATION_VALUE: LocationCascadeValue = {
+  locationDivision: '',
+  locationDistrict: '',
+  locationUpazila: '',
+  locationArea: '',
+  locationExtra: [],
+};
+
+/** Walks the same name chain LocationCascadeSelect just resolved and returns
+ * the deepest matched node — so the caller gets that node's `id`/`bn`/`en`,
+ * not just the raw name strings the cascade value carries. */
+function findDeepestLocationNode(nodes: LocationNode[], value: LocationCascadeValue): LocationNode | null {
+  const names = [value.locationDivision, value.locationDistrict, value.locationUpazila, value.locationArea, ...value.locationExtra];
+  let parentId: string | null = null;
+  let deepest: LocationNode | null = null;
+
+  for (const name of names) {
+    if (!name) break;
+    const match: LocationNode | undefined = childrenOf(nodes, parentId).find((node) => node.en === name);
+    if (!match) break;
+    deepest = match;
+    parentId = match.id;
+  }
+
+  return deepest;
+}
+
+/** Drills Division -> District -> Upazila -> Area exactly like the post-ad
+ * form and admin Locations page do — picking a node at any depth counts as
+ * a selection (no need to go all the way to Area). */
+function LocationSearchPicker({ onSelect }: { onSelect: (node: LocationNode) => void }) {
+  const [nodes, setNodes] = useState<LocationNode[]>([]);
+  const [value, setValue] = useState<LocationCascadeValue>(EMPTY_LOCATION_VALUE);
+
+  useEffect(() => subscribeToLocationNodes(setNodes), []);
+
+  function handleChange(next: LocationCascadeValue) {
+    setValue(next);
+    const deepest = findDeepestLocationNode(nodes, next);
+    if (deepest) {
+      onSelect(deepest);
+    }
+  }
+
+  return <LocationCascadeSelect value={value} onChange={handleChange} />;
+}
+
 type NotificationLabels = {
   title: string;
   markAllRead: string;
@@ -293,7 +342,8 @@ export default function TopBar() {
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<ListingPurpose | null>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ en: string; bn: string } | null>(null);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
@@ -307,6 +357,7 @@ export default function TopBar() {
   );
   const browseDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const locationSearchDropdownRef = useRef<HTMLDivElement>(null);
   // Two refs because the desktop and mobile bell each render their own trigger
   // + panel, and both trees are mounted at once (only one is CSS-visible at a
   // given viewport) — either one being clicked should count as "inside".
@@ -338,6 +389,12 @@ export default function TopBar() {
       }
       if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target as Node)) {
         setIsAccountOpen(false);
+      }
+      if (
+        locationSearchDropdownRef.current &&
+        !locationSearchDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLocationSearchOpen(false);
       }
       const target = event.target as Node;
       const isInsideNotifications =
@@ -387,11 +444,17 @@ export default function TopBar() {
     setExpandedGroup((current) => (current === purpose ? null : purpose));
   }
 
-  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = searchTerm.trim();
-    router.push(trimmed ? `/listings?search=${encodeURIComponent(trimmed)}` : '/listings');
+  function handleLocationSelect(node: LocationNode) {
+    setSelectedLocation({ en: node.en, bn: node.bn });
+    router.push(`/listings?search=${encodeURIComponent(node.en)}`);
+    setIsLocationSearchOpen(false);
     setIsSearchOpen(false);
+  }
+
+  function clearLocationSearch() {
+    setSelectedLocation(null);
+    router.push('/listings');
+    setIsLocationSearchOpen(false);
   }
 
   async function handleLogOut() {
@@ -453,18 +516,36 @@ export default function TopBar() {
             )}
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="w-72">
-            <div className="relative">
+          <div className="relative w-72" ref={locationSearchDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsLocationSearchOpen((open) => !open)}
+              className="relative flex w-full items-center rounded-md border border-transparent bg-white py-1.5 pl-9 pr-8 text-left text-sm outline-none focus:border-brand-mint"
+            >
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder={t.topbar.searchPlaceholder}
-                className="w-full rounded-md border border-transparent bg-white py-1.5 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
-              />
-            </div>
-          </form>
+              <span className={`truncate ${selectedLocation ? 'text-gray-900' : 'text-gray-400'}`}>
+                {selectedLocation
+                  ? (language === 'bn' ? selectedLocation.bn : selectedLocation.en)
+                  : t.topbar.searchPlaceholder}
+              </span>
+            </button>
+            {selectedLocation && (
+              <button
+                type="button"
+                onClick={clearLocationSearch}
+                aria-label="Clear location"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+
+            {isLocationSearchOpen && (
+              <div className="absolute left-0 top-full z-50 mt-2 w-[40rem] max-w-[90vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+                <LocationSearchPicker onSelect={handleLocationSelect} />
+              </div>
+            )}
+          </div>
 
           <Link
             href="/post-ad"
@@ -565,19 +646,19 @@ export default function TopBar() {
         </div>
 
         {isSearchOpen && (
-          <form onSubmit={handleSearchSubmit} className="lg:hidden mt-3">
-            <div className="relative">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder={t.topbar.searchPlaceholder}
-                className="w-full rounded-md border border-transparent bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none focus:border-brand-mint"
-                autoFocus
-              />
-            </div>
-          </form>
+          <div className="lg:hidden mt-3 rounded-lg border border-gray-200 bg-white p-3">
+            {selectedLocation && (
+              <div className="mb-2 flex items-center justify-between gap-2 rounded-md bg-brand-mint/15 px-3 py-2 text-sm font-medium text-brand-navy">
+                <span className="truncate">
+                  {language === 'bn' ? selectedLocation.bn : selectedLocation.en}
+                </span>
+                <button type="button" onClick={clearLocationSearch} aria-label="Clear location" className="shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <LocationSearchPicker onSelect={handleLocationSelect} />
+          </div>
         )}
 
         {isMenuOpen && (

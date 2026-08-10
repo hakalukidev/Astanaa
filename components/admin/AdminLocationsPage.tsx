@@ -75,12 +75,14 @@ function AddRow({ onAdd }: { onAdd: (en: string, bn: string) => Promise<void> })
 
 function LocationItemRow({
   node,
+  serial,
   hasChildren,
   isSelected,
   onSelect,
   onDelete,
 }: {
   node: LocationNode;
+  serial: number;
   hasChildren: boolean;
   isSelected: boolean;
   onSelect: () => void;
@@ -150,6 +152,7 @@ function LocationItemRow({
       }`}
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate text-left">
+        <span className={`mr-1 tabular-nums ${isSelected ? "text-white/70" : "text-gray-400"}`}>{serial}.</span>
         {node.en} <span className={isSelected ? "text-white/80" : "text-gray-400"}>({node.bn})</span>
       </button>
       {isPlaceholder ? (
@@ -207,10 +210,11 @@ function LocationColumn({
           <p className="px-3 py-4 text-xs text-gray-400">Nothing added here yet.</p>
         ) : (
           <ul>
-            {items.map((node) => (
+            {items.map((node, index) => (
               <LocationItemRow
                 key={node.id}
                 node={node}
+                serial={index + 1}
                 hasChildren={childrenOf(nodes, node.id).length > 0}
                 isSelected={node.id === selectedId}
                 onSelect={() => onSelect(node)}

@@ -37,7 +37,7 @@ export const translations = {
     topbar: {
       browseTypes: "BROWSE PROPERTY TYPES",
       allListings: "All Listings",
-      searchPlaceholder: "Search by location, title...",
+      searchPlaceholder: "Search by location...",
       postAd: "Post Ad",
       login: "Login",
       account: "Account",
@@ -308,7 +308,7 @@ export const translations = {
     topbar: {
       browseTypes: "প্রপার্টি টাইপ ব্রাউজ করুন",
       allListings: "সব লিস্টিং",
-      searchPlaceholder: "লোকেশন, টাইটেল দিয়ে খুঁজুন...",
+      searchPlaceholder: "লোকেশন দিয়ে খুঁজুন...",
       postAd: "বিজ্ঞাপন পোস্ট করুন",
       login: "লগইন",
       account: "অ্যাকাউন্ট",
