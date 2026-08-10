@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   childrenOf,
   deleteLocationNode,
   isFallbackNode,
+  reorderLocationSiblings,
   seedBuiltInLocations,
   subscribeToLocationNodes,
   updateLocationNode,
@@ -78,22 +79,40 @@ function LocationItemRow({
   serial,
   hasChildren,
   isSelected,
+  isFirst,
+  isLast,
   onSelect,
   onDelete,
+  onMove,
 }: {
   node: LocationNode;
   serial: number;
   hasChildren: boolean;
   isSelected: boolean;
+  isFirst: boolean;
+  isLast: boolean;
   onSelect: () => void;
   onDelete: () => Promise<void>;
+  onMove: (direction: "up" | "down") => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [en, setEn] = useState(node.en);
   const [bn, setBn] = useState(node.bn);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const isPlaceholder = isFallbackNode(node);
+
+  async function handleMove(direction: "up" | "down") {
+    setIsMoving(true);
+    try {
+      await onMove(direction);
+    } catch {
+      toast({ title: "Could not reorder", variant: "destructive" });
+    } finally {
+      setIsMoving(false);
+    }
+  }
 
   async function handleSave() {
     if (!en.trim() || !bn.trim()) {
@@ -163,6 +182,26 @@ function LocationItemRow({
         <span className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             type="button"
+            onClick={() => handleMove("up")}
+            disabled={isFirst || isMoving}
+            className={`rounded p-1 disabled:opacity-30 ${isSelected ? "hover:bg-white/20" : "hover:bg-gray-200"}`}
+            aria-label="Move up"
+            title="Move up"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove("down")}
+            disabled={isLast || isMoving}
+            className={`rounded p-1 disabled:opacity-30 ${isSelected ? "hover:bg-white/20" : "hover:bg-gray-200"}`}
+            aria-label="Move down"
+            title="Move down"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsEditing(true)}
             className={`rounded p-1 ${isSelected ? "hover:bg-white/20" : "hover:bg-gray-200"}`}
             aria-label="Edit"
@@ -217,8 +256,19 @@ function LocationColumn({
                 serial={index + 1}
                 hasChildren={childrenOf(nodes, node.id).length > 0}
                 isSelected={node.id === selectedId}
+                isFirst={index === 0}
+                isLast={index === items.length - 1}
                 onSelect={() => onSelect(node)}
                 onDelete={() => deleteLocationNode(node.id)}
+                onMove={(direction) => {
+                  const swapWith = direction === "up" ? index - 1 : index + 1;
+                  if (swapWith < 0 || swapWith >= items.length) {
+                    return Promise.resolve();
+                  }
+                  const reordered = [...items];
+                  [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+                  return reorderLocationSiblings(reordered.map((item) => item.id));
+                }}
               />
             ))}
           </ul>
@@ -319,7 +369,8 @@ export default function AdminLocationsPage() {
             Every division, district, and upazila (all of Bangladesh) is loaded here and fully
             editable — click one to drill into it, use the pencil/trash icons to rename or remove,
             or add new entries at any level (including deeper ones of your own, like Road or Goli,
-            under an Area).
+            under an Area). Lists sort alphabetically by default; use the ↑/↓ icons to manually
+            reorder a list the way you want — once you do, that list stays exactly where you put it.
           </CardDescription>
         </CardHeader>
         <CardContent>

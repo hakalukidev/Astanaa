@@ -444,11 +444,15 @@ export default function TopBar() {
     setExpandedGroup((current) => (current === purpose ? null : purpose));
   }
 
+  // Deliberately doesn't close the dropdown/panel — Division -> District ->
+  // Upazila -> ... should keep revealing the next column as you drill in
+  // (LocationCascadeSelect already does this as long as nothing unmounts it).
+  // Every pick still searches immediately, so whichever level you stop at is
+  // already live; closing happens on its own via the outside-click handler
+  // (desktop) or tapping the search icon again (mobile).
   function handleLocationSelect(node: LocationNode) {
     setSelectedLocation({ en: node.en, bn: node.bn });
     router.push(`/listings?search=${encodeURIComponent(node.en)}`);
-    setIsLocationSearchOpen(false);
-    setIsSearchOpen(false);
   }
 
   function clearLocationSearch() {

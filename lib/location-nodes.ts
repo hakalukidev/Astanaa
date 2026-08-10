@@ -30,6 +30,12 @@ export type LocationNode = {
   en: string;
   bn: string;
   order: number;
+  /** Set the first time an admin manually reorders this node's sibling group
+   * (see reorderLocationSiblings). Once any sibling in a group has this,
+   * childrenOf sorts that whole group by `order` instead of alphabetically —
+   * so a group stays auto-alphabetical until an admin deliberately takes
+   * over, and from then on stays exactly where they put it. */
+  manualOrder: boolean;
   createdAtMs: number | null;
 };
 
@@ -52,30 +58,41 @@ function mapNode(snapshot: QueryDocumentSnapshot<DocumentData>): LocationNode {
     en: typeof data.en === "string" ? data.en : "",
     bn: typeof data.bn === "string" ? data.bn : "",
     order: typeof data.order === "number" ? data.order : 0,
+    manualOrder: data.manualOrder === true,
     createdAtMs: getTimestampMs(data.createdAt),
   };
 }
 
 /**
- * A division's own headquarters district (and similarly a district's own
- * "Sadar" upazila) is often literally named after its parent — e.g. the
- * Barishal division contains a Barishal district. That one is pinned first;
- * everything else sorts alphabetically (dictionary order) by English name,
- * regardless of the order nodes were added in.
+ * Default (no admin override yet): a division's own headquarters district
+ * (and similarly a district's own "Sadar" upazila) is often literally named
+ * after its parent — e.g. the Barishal division contains a Barishal
+ * district. That one is pinned first; everything else sorts alphabetically
+ * (dictionary order) by English name, regardless of the order nodes were
+ * added in.
+ *
+ * Once an admin manually reorders anything in a sibling group (see
+ * reorderLocationSiblings), that whole group switches to sorting strictly by
+ * `order` instead — admin's explicit choice always wins over the automatic
+ * alphabetical/pinned default.
  */
 export function childrenOf(nodes: LocationNode[], parentId: string | null): LocationNode[] {
+  const siblings = nodes.filter((node) => node.parentId === parentId);
+
+  if (siblings.some((node) => node.manualOrder)) {
+    return [...siblings].sort((left, right) => left.order - right.order || left.en.localeCompare(right.en));
+  }
+
   const parentName = parentId ? nodes.find((node) => node.id === parentId)?.en : undefined;
 
-  return nodes
-    .filter((node) => node.parentId === parentId)
-    .sort((left, right) => {
-      const leftPinned = parentName !== undefined && left.en === parentName;
-      const rightPinned = parentName !== undefined && right.en === parentName;
-      if (leftPinned !== rightPinned) {
-        return leftPinned ? -1 : 1;
-      }
-      return left.en.localeCompare(right.en);
-    });
+  return siblings.sort((left, right) => {
+    const leftPinned = parentName !== undefined && left.en === parentName;
+    const rightPinned = parentName !== undefined && right.en === parentName;
+    if (leftPinned !== rightPinned) {
+      return leftPinned ? -1 : 1;
+    }
+    return left.en.localeCompare(right.en);
+  });
 }
 
 /** Every fallback node's id starts with this — lets callers tell "seed data" from real Firestore docs. */
@@ -98,7 +115,15 @@ const FALLBACK_LOCATION_NODES: LocationNode[] = (() => {
 
   BD_LOCATIONS.forEach((division, divisionIndex) => {
     const divisionId = `${FALLBACK_ID_PREFIX}division-${divisionIndex}`;
-    nodes.push({ id: divisionId, parentId: null, en: division.en, bn: division.bn, order: divisionIndex, createdAtMs: null });
+    nodes.push({
+      id: divisionId,
+      parentId: null,
+      en: division.en,
+      bn: division.bn,
+      order: divisionIndex,
+      manualOrder: false,
+      createdAtMs: null,
+    });
 
     division.districts.forEach((district, districtIndex) => {
       const districtId = `${FALLBACK_ID_PREFIX}district-${divisionIndex}-${districtIndex}`;
@@ -108,6 +133,7 @@ const FALLBACK_LOCATION_NODES: LocationNode[] = (() => {
         en: district.en,
         bn: district.bn,
         order: districtIndex,
+        manualOrder: false,
         createdAtMs: null,
       });
 
@@ -118,6 +144,7 @@ const FALLBACK_LOCATION_NODES: LocationNode[] = (() => {
           en: upazila.en,
           bn: upazila.bn,
           order: upazilaIndex,
+          manualOrder: false,
           createdAtMs: null,
         });
       });
@@ -198,6 +225,27 @@ export async function deleteLocationNode(id: string) {
   }
 
   await deleteDoc(doc(db, LOCATION_NODES_COLLECTION, id));
+}
+
+/**
+ * Staff-admin only (enforced by firestore.rules). Persists an admin-chosen
+ * order for an entire sibling group at once — pass every sibling's id in
+ * the order they should now appear in. Marks all of them `manualOrder: true`,
+ * so childrenOf switches that group from alphabetical to this exact order
+ * from now on (including for any new sibling added later, until an admin
+ * repositions it too).
+ */
+export async function reorderLocationSiblings(orderedIds: string[]) {
+  if (!db) {
+    throw new Error("Location data is not available.");
+  }
+  const database = db;
+
+  const batch = writeBatch(database);
+  orderedIds.forEach((id, index) => {
+    batch.update(doc(database, LOCATION_NODES_COLLECTION, id), { order: index, manualOrder: true });
+  });
+  await batch.commit();
 }
 
 /**
