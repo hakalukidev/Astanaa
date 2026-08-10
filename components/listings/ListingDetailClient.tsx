@@ -14,7 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import BoostListingDialog from "@/components/listings/BoostListingDialog";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { createBuyRequest } from "@/lib/buy-requests";
 import { getOrCreateChat } from "@/lib/chat";
+import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { deleteListing } from "@/lib/listing-service";
 import {
   formatListingPostedAt,
@@ -51,6 +52,11 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   const [buyRequestSent, setBuyRequestSent] = useState(false);
   const [boostDialogOpen, setBoostDialogOpen] = useState(false);
   const [boostStatus, setBoostStatus] = useState(listing.boost.status);
+  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+
+  useEffect(() => subscribeToListingPurposes(setPurposes), []);
+
+  const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
 
   const photos = listing.photoUrls.length > 0 ? listing.photoUrls : [getPrimaryListingPhotoUrl(listing)];
   const isOwner = user?.uid === listing.sellerId;
@@ -221,7 +227,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
 
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                  {listing.purpose === "rent" ? tListings.forRent : tListings.forSale}
+                  {purposeLabel}
                 </span>
                 {boostStatus === "active" ? (
                   <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">

@@ -76,7 +76,7 @@ function mapCategory(snapshot: QueryDocumentSnapshot<DocumentData>): PropertyTyp
 
   return {
     id: snapshot.id,
-    purpose: data.purpose === "rent" ? "rent" : "sale",
+    purpose: typeof data.purpose === "string" && data.purpose ? data.purpose : "sale",
     en: typeof data.en === "string" ? data.en : "",
     bn: typeof data.bn === "string" ? data.bn : "",
     icon: typeof data.icon === "string" && data.icon ? data.icon : DEFAULT_PROPERTY_TYPE_ICON,
@@ -88,7 +88,7 @@ function mapCategory(snapshot: QueryDocumentSnapshot<DocumentData>): PropertyTyp
 function sortCategories(categories: PropertyTypeCategory[]) {
   return [...categories].sort((left, right) => {
     if (left.purpose !== right.purpose) {
-      return left.purpose === "rent" ? -1 : 1;
+      return left.purpose.localeCompare(right.purpose);
     }
     if (left.order !== right.order) {
       return left.order - right.order;
@@ -137,13 +137,17 @@ export function subscribeToPropertyTypeCategories(
   );
 }
 
+/** Buckets categories by their purpose key. Purposes with no categories yet
+ * simply won't have an entry — callers should fall back to `[]` (e.g.
+ * `grouped[purposeKey] ?? []`) rather than assuming `rent`/`sale` exist. */
 export function groupCategoriesByPurpose(
   categories: PropertyTypeCategory[]
-): Record<ListingPurpose, PropertyTypeCategory[]> {
-  return {
-    rent: categories.filter((category) => category.purpose === "rent"),
-    sale: categories.filter((category) => category.purpose === "sale"),
-  };
+): Record<string, PropertyTypeCategory[]> {
+  const grouped: Record<string, PropertyTypeCategory[]> = {};
+  for (const category of categories) {
+    (grouped[category.purpose] ??= []).push(category);
+  }
+  return grouped;
 }
 
 /** Staff-admin only (enforced by firestore.rules). */
@@ -199,7 +203,7 @@ export async function seedDefaultPropertyTypeCategories() {
   }
 
   const batch = writeBatch(db);
-  const byPurposeCounter: Record<ListingPurpose, number> = { rent: 0, sale: 0 };
+  const byPurposeCounter: Record<string, number> = { rent: 0, sale: 0 };
 
   for (const entry of DEFAULT_PROPERTY_TYPE_CATEGORIES) {
     const order = byPurposeCounter[entry.purpose]++;

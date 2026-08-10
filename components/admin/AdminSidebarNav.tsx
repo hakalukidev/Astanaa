@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   FileText,
   Image,
+  Layers,
   LayoutPanelTop,
   MapPin,
   Megaphone,
@@ -44,6 +45,11 @@ const catalogItems = [
     href: "/admin/locations",
     label: "Locations",
     icon: MapPin,
+  },
+  {
+    href: "/admin/purposes",
+    label: "Listing Purposes",
+    icon: Layers,
   },
   {
     href: "/admin/property-types",

@@ -2,8 +2,10 @@
 
 import { BedDouble, Handshake, MapPin, Ruler, Zap } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import {
   formatListingPostedAt,
   formatListingPrice,
@@ -21,6 +23,11 @@ export default function ListingCard({ listing }: ListingCardProps) {
   const t = translations[language].listings;
   const photoUrl = getPrimaryListingPhotoUrl(listing);
   const isBoosted = listing.boost.status === "active";
+  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+
+  useEffect(() => subscribeToListingPurposes(setPurposes), []);
+
+  const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
 
   return (
     <Link
@@ -48,7 +55,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
         ) : null}
 
         <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
-          {listing.purpose === "rent" ? t.forRent : t.forSale}
+          {purposeLabel}
         </span>
       </div>
 

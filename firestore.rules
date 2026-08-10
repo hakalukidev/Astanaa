@@ -123,6 +123,16 @@ service cloud.firestore {
       allow write: if isStaffAdmin();
     }
 
+    // --- listingPurposes -----------------------------------------------------
+    // The top-level groups ("For Rent", "For Sale", and whatever an admin
+    // adds beyond those) that propertyTypeCategories hang off of
+    // (lib/listing-purposes.ts). Public read so the Browse menu and post-ad
+    // form work for everyone; only staff-admin can add, edit, or remove them.
+    match /listingPurposes/{purposeId} {
+      allow read: if true;
+      allow write: if isStaffAdmin();
+    }
+
     // --- listings ------------------------------------------------------
     // Anyone can read active listings; the owner can read their own listing
     // regardless of status (pending/rejected/sold); staff/moderators can read

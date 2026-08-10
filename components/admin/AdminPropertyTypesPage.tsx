@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import type { ListingPurpose } from "@/lib/listings";
+import {
+  isFallbackPurpose,
+  subscribeToListingPurposes,
+  type ListingPurposeRecord,
+} from "@/lib/listing-purposes";
 import {
   addPropertyTypeCategory,
   deletePropertyTypeCategory,
@@ -48,11 +53,12 @@ function describeSaveError(error: unknown): string {
 
 export default function AdminPropertyTypesPage() {
   const [categories, setCategories] = useState<PropertyTypeCategory[]>([]);
+  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const hasTriggeredSeed = useRef(false);
 
-  const [purpose, setPurpose] = useState<ListingPurpose>("rent");
+  const [purpose, setPurpose] = useState<string>("rent");
   const [en, setEn] = useState("");
   const [bn, setBn] = useState("");
   const [icon, setIcon] = useState(DEFAULT_PROPERTY_TYPE_ICON);
@@ -67,6 +73,22 @@ export default function AdminPropertyTypesPage() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => subscribeToListingPurposes(setPurposes), []);
+
+  const visiblePurposes = purposes.filter((item) => !isFallbackPurpose(item));
+
+  // Keep the Purpose select valid whenever the purposes list loads (e.g. an
+  // admin renamed/removed the one currently selected).
+  useEffect(() => {
+    if (visiblePurposes.length === 0) {
+      return;
+    }
+    if (!visiblePurposes.some((item) => item.key === purpose)) {
+      setPurpose(visiblePurposes[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visiblePurposes]);
 
   useEffect(() => {
     if (isLoading || hasTriggeredSeed.current || !isFallbackList(categories)) {
@@ -93,7 +115,9 @@ export default function AdminPropertyTypesPage() {
     setEn("");
     setBn("");
     setIcon(DEFAULT_PROPERTY_TYPE_ICON);
-    setPurpose("rent");
+    if (visiblePurposes.length > 0) {
+      setPurpose(visiblePurposes[0].key);
+    }
   }
 
   function startEdit(category: PropertyTypeCategory) {
@@ -157,10 +181,11 @@ export default function AdminPropertyTypesPage() {
         <CardHeader>
           <CardTitle className="text-blue-950">Property Type Categories</CardTitle>
           <CardDescription>
-            The categories shown under For Rent / For Sale in the &quot;Browse Property Types&quot;
-            menu, the post-ad form, and the listings filter. &quot;All Listings&quot; itself always
-            stays fixed at the top of that menu and isn&apos;t a category — everything below is
-            editable here.
+            The categories shown under each purpose (For Rent, For Sale, and anything else added
+            on the <Link href="/admin/purposes" className="underline hover:text-blue-700">Listing
+            Purposes</Link> page) in the &quot;Browse Property Types&quot; menu, the post-ad form,
+            and the listings filter. &quot;All Listings&quot; itself always stays fixed at the top
+            of that menu and isn&apos;t a category — everything below is editable here.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,11 +195,14 @@ export default function AdminPropertyTypesPage() {
               <select
                 id="purpose"
                 value={purpose}
-                onChange={(event) => setPurpose(event.target.value as ListingPurpose)}
+                onChange={(event) => setPurpose(event.target.value)}
                 className={selectClassName}
               >
-                <option value="rent">For Rent</option>
-                <option value="sale">For Sale</option>
+                {visiblePurposes.map((item) => (
+                  <option key={item.id} value={item.key}>
+                    {item.en}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -241,9 +269,17 @@ export default function AdminPropertyTypesPage() {
           {isSeeding ? "Setting up the default categories..." : "Loading categories..."}
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <CategoryListCard title="For Rent" categories={grouped.rent} onEdit={startEdit} onDelete={handleDelete} deletingId={deletingId} />
-          <CategoryListCard title="For Sale" categories={grouped.sale} onEdit={startEdit} onDelete={handleDelete} deletingId={deletingId} />
+        <div className="grid gap-6 sm:grid-cols-2">
+          {visiblePurposes.map((item) => (
+            <CategoryListCard
+              key={item.id}
+              title={item.en}
+              categories={grouped[item.key] ?? []}
+              onEdit={startEdit}
+              onDelete={handleDelete}
+              deletingId={deletingId}
+            />
+          ))}
         </div>
       )}
     </div>

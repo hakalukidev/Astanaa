@@ -4,14 +4,12 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  KeyRound,
   LayoutGrid,
   LogOut,
   Menu,
   MessageCircle,
   Plus,
   Search,
-  Tag,
   User,
   X,
   type LucideIcon,
@@ -23,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { subscribeToListingPurposes, type ListingPurposeRecord } from '@/lib/listing-purposes';
 import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
 import {
   markAllNotificationsRead,
@@ -129,7 +128,7 @@ function PropertyTypeGroup({
   language: 'en' | 'bn';
   isExpanded: boolean;
   onToggle: () => void;
-  onSelect: (type: string, purpose: ListingPurpose) => void;
+  onSelect: (category: PropertyTypeCategory, purpose: ListingPurpose) => void;
   variant: 'light' | 'dark';
 }) {
   const light = variant === 'light';
@@ -158,7 +157,7 @@ function PropertyTypeGroup({
               <li key={category.id}>
                 <button
                   type="button"
-                  onClick={() => onSelect(category.en, purpose)}
+                  onClick={() => onSelect(category, purpose)}
                   className={`flex w-full items-center gap-2 text-left text-sm transition ${
                     light
                       ? 'px-7 py-1.5 text-gray-600 hover:bg-brand-mint/15 hover:text-brand-navy'
@@ -298,6 +297,14 @@ export default function TopBar() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
+  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+  // What the Browse trigger button shows — null means "All Listings". Keeping
+  // both language variants (not just the current one) lets BilingualLabel
+  // size the button for the wider of the two, so toggling language never
+  // resizes it around whatever's currently selected.
+  const [selectedBrowseLabel, setSelectedBrowseLabel] = useState<{ en: string; bn: string } | null>(
+    null
+  );
   const browseDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   // Two refs because the desktop and mobile bell each render their own trigger
@@ -316,6 +323,7 @@ export default function TopBar() {
   }, [user]);
 
   useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+  useEffect(() => subscribeToListingPurposes(setPurposes), []);
 
   const categoriesByPurpose = useMemo(
     () => groupCategoriesByPurpose(propertyTypeCategories),
@@ -364,8 +372,14 @@ export default function TopBar() {
     setExpandedGroup(null);
   }
 
-  function goToPropertyType(type: string, purpose: ListingPurpose) {
-    router.push(`/listings?type=${encodeURIComponent(type)}&purpose=${purpose}`);
+  function goToAllListings() {
+    setSelectedBrowseLabel(null);
+    closeBrowseMenu();
+  }
+
+  function goToPropertyType(category: PropertyTypeCategory, purpose: ListingPurpose) {
+    router.push(`/listings?type=${encodeURIComponent(category.en)}&purpose=${purpose}`);
+    setSelectedBrowseLabel({ en: category.en, bn: category.bn });
     closeBrowseMenu();
   }
 
@@ -403,7 +417,10 @@ export default function TopBar() {
               className="flex items-center gap-2 border border-white/25 hover:bg-white/10 px-4 py-1.5 rounded text-sm font-semibold text-white transition whitespace-nowrap"
             >
               <Menu size={15} />
-              <BilingualLabel en={translations.en.topbar.allListings} bn={translations.bn.topbar.allListings} />
+              <BilingualLabel
+                en={selectedBrowseLabel?.en ?? translations.en.topbar.allListings}
+                bn={selectedBrowseLabel?.bn ?? translations.bn.topbar.allListings}
+              />
               <ChevronDown size={13} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -412,34 +429,26 @@ export default function TopBar() {
                 <Link
                   href="/listings"
                   className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
-                  onClick={closeBrowseMenu}
+                  onClick={goToAllListings}
                 >
                   <LayoutGrid size={15} className="shrink-0" />
                   {t.topbar.allListings}
                 </Link>
                 <div className="my-1 border-t border-gray-100" />
-                <PropertyTypeGroup
-                  purpose="rent"
-                  label={t.listings.forRent}
-                  groupIcon={KeyRound}
-                  categories={categoriesByPurpose.rent}
-                  language={language}
-                  isExpanded={expandedGroup === 'rent'}
-                  onToggle={() => toggleGroup('rent')}
-                  onSelect={goToPropertyType}
-                  variant="light"
-                />
-                <PropertyTypeGroup
-                  purpose="sale"
-                  label={t.listings.forSale}
-                  groupIcon={Tag}
-                  categories={categoriesByPurpose.sale}
-                  language={language}
-                  isExpanded={expandedGroup === 'sale'}
-                  onToggle={() => toggleGroup('sale')}
-                  onSelect={goToPropertyType}
-                  variant="light"
-                />
+                {purposes.map((purposeRecord) => (
+                  <PropertyTypeGroup
+                    key={purposeRecord.id}
+                    purpose={purposeRecord.key}
+                    label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
+                    groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
+                    categories={categoriesByPurpose[purposeRecord.key] ?? []}
+                    language={language}
+                    isExpanded={expandedGroup === purposeRecord.key}
+                    onToggle={() => toggleGroup(purposeRecord.key)}
+                    onSelect={goToPropertyType}
+                    variant="light"
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -579,39 +588,35 @@ export default function TopBar() {
                 className="w-full flex items-center justify-between gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition"
               >
                 <span className="flex items-center gap-2">
-                  <Menu size={16} /> {t.topbar.allListings}
+                  <Menu size={16} />
+                  <BilingualLabel
+                    en={selectedBrowseLabel?.en ?? translations.en.topbar.allListings}
+                    bn={selectedBrowseLabel?.bn ?? translations.bn.topbar.allListings}
+                  />
                 </span>
                 <ChevronDown size={14} className={`transition-transform ${isBrowseOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isBrowseOpen && (
                 <div className="mt-2 ml-4 space-y-1 border-l-2 border-white/20 pl-3">
-                  <Link href="/listings" className="flex items-center gap-2 py-2 text-sm text-white/80 hover:text-brand-mint" onClick={closeBrowseMenu}>
+                  <Link href="/listings" className="flex items-center gap-2 py-2 text-sm text-white/80 hover:text-brand-mint" onClick={goToAllListings}>
                     <LayoutGrid size={15} className="shrink-0" />
                     {t.topbar.allListings}
                   </Link>
-                  <PropertyTypeGroup
-                    purpose="rent"
-                    label={t.listings.forRent}
-                    groupIcon={KeyRound}
-                    categories={categoriesByPurpose.rent}
-                    language={language}
-                    isExpanded={expandedGroup === 'rent'}
-                    onToggle={() => toggleGroup('rent')}
-                    onSelect={goToPropertyType}
-                    variant="dark"
-                  />
-                  <PropertyTypeGroup
-                    purpose="sale"
-                    label={t.listings.forSale}
-                    groupIcon={Tag}
-                    categories={categoriesByPurpose.sale}
-                    language={language}
-                    isExpanded={expandedGroup === 'sale'}
-                    onToggle={() => toggleGroup('sale')}
-                    onSelect={goToPropertyType}
-                    variant="dark"
-                  />
+                  {purposes.map((purposeRecord) => (
+                    <PropertyTypeGroup
+                      key={purposeRecord.id}
+                      purpose={purposeRecord.key}
+                      label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
+                      groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
+                      categories={categoriesByPurpose[purposeRecord.key] ?? []}
+                      language={language}
+                      isExpanded={expandedGroup === purposeRecord.key}
+                      onToggle={() => toggleGroup(purposeRecord.key)}
+                      onSelect={goToPropertyType}
+                      variant="dark"
+                    />
+                  ))}
                 </div>
               )}
             </div>

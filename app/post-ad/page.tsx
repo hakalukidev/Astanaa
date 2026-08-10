@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { createListing } from "@/lib/listing-service";
 import { formatListingLocation, type ListingPurpose } from "@/lib/listings";
 import {
@@ -36,6 +37,7 @@ export default function PostAdPage() {
 
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const categoriesByPurpose = groupCategoriesByPurpose(propertyTypeCategories);
+  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
 
   const [title, setTitle] = useState("");
   const [purpose, setPurpose] = useState<ListingPurpose>("sale");
@@ -75,11 +77,21 @@ export default function PostAdPage() {
   }, [loading, user, router]);
 
   useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+  useEffect(() => subscribeToListingPurposes(setPurposes), []);
+
+  // Keep the chosen purpose valid whenever the purposes list loads (e.g. an
+  // admin renamed/removed the one currently selected).
+  useEffect(() => {
+    if (purposes.length > 0 && !purposes.some((item) => item.key === purpose)) {
+      setPurpose(purposes[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purposes]);
 
   // Keep propertyType valid whenever the category list loads or the chosen
   // purpose changes (e.g. switching from Sale to Rent drops a sale-only type).
   useEffect(() => {
-    const validTypes = categoriesByPurpose[purpose].map((category) => category.en);
+    const validTypes = (categoriesByPurpose[purpose] ?? []).map((category) => category.en);
     if (validTypes.length > 0 && !validTypes.includes(propertyType)) {
       setPropertyType(validTypes[0]);
     }
@@ -251,11 +263,14 @@ export default function PostAdPage() {
                   <select
                     id="purpose"
                     value={purpose}
-                    onChange={(event) => setPurpose(event.target.value as ListingPurpose)}
+                    onChange={(event) => setPurpose(event.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    <option value="sale">{t.forSale}</option>
-                    <option value="rent">{t.forRent}</option>
+                    {purposes.map((item) => (
+                      <option key={item.id} value={item.key}>
+                        {language === "bn" ? item.bn : item.en}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -267,7 +282,7 @@ export default function PostAdPage() {
                     onChange={(event) => setPropertyType(event.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    {categoriesByPurpose[purpose].map((category) => (
+                    {(categoriesByPurpose[purpose] ?? []).map((category) => (
                       <option key={category.id} value={category.en}>
                         {language === "bn" ? category.bn : category.en}
                       </option>

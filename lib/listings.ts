@@ -7,13 +7,20 @@ import type {
 
 export const LISTINGS_COLLECTION = "listings";
 
-export const LISTING_PURPOSES = ["sale", "rent"] as const;
-export type ListingPurpose = (typeof LISTING_PURPOSES)[number];
+/**
+ * Purposes ("For Rent", "For Sale", and whatever an admin adds beyond those)
+ * are no longer a fixed pair — they're admin-managed in Firestore, keyed by
+ * a stable slug (`ListingPurposeRecord.key`). See lib/listing-purposes.ts,
+ * which holds the original rent/sale pair as DEFAULT_LISTING_PURPOSES
+ * (seeded in the first time an admin opens the Listing Purposes admin page).
+ * The type stays a plain string here since the valid set is now dynamic.
+ */
+export type ListingPurpose = string;
 
-// Property types (categories) themselves are no longer hardcoded here — they're
-// admin-managed in Firestore. See lib/property-type-categories.ts, which also
-// holds the original list as DEFAULT_PROPERTY_TYPE_CATEGORIES (seeded in the
-// first time an admin opens the Categories admin page).
+// Property types (categories) themselves are similarly no longer hardcoded
+// here — they're admin-managed in Firestore. See lib/property-type-categories.ts,
+// which also holds the original list as DEFAULT_PROPERTY_TYPE_CATEGORIES
+// (seeded in the first time an admin opens the Categories admin page).
 
 export type ListingStatus = "active" | "sold" | "pending" | "rejected";
 
@@ -133,7 +140,7 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     description: typeof data.description === "string" ? data.description : "",
     price: toNullableNumber(data.price) ?? 0,
     negotiable: data.negotiable === true,
-    purpose: data.purpose === "rent" ? "rent" : "sale",
+    purpose: typeof data.purpose === "string" && data.purpose ? data.purpose : "sale",
     propertyType:
       typeof data.propertyType === "string" ? data.propertyType : "Flat Rent",
     location: typeof data.location === "string" ? data.location : "",
