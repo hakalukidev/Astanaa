@@ -139,6 +139,7 @@ export const translations = {
       priceAbovePrefix: "More than",
       adsCountSuffix: "ads",
       priceClear: "Clear",
+      priceApply: "OK",
       time: {
         justNow: "Just now",
         minute: "minute",
@@ -409,6 +410,7 @@ export const translations = {
       priceAbovePrefix: "এর বেশি",
       adsCountSuffix: "টি বিজ্ঞাপন",
       priceClear: "মুছুন",
+      priceApply: "ঠিক আছে",
       time: {
         justNow: "এইমাত্র",
         minute: "মিনিট",

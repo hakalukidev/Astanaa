@@ -5,7 +5,6 @@ import {
   BarChart3,
   ClipboardCheck,
   FileText,
-  FolderTree,
   Image,
   LayoutPanelTop,
   MapPin,
@@ -40,11 +39,6 @@ const catalogItems = [
     href: "/admin/slides",
     label: "Slides",
     icon: Image,
-  },
-  {
-    href: "/admin/categories",
-    label: "Categories & Sub Categories",
-    icon: FolderTree,
   },
   {
     href: "/admin/locations",

@@ -1,6 +1,5 @@
 "use client";
 
-import { Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
@@ -13,10 +12,6 @@ import {
   type ListingPurpose,
   type PriceBand,
 } from "@/lib/listings";
-import {
-  subscribeToPropertyTypeCategories,
-  type PropertyTypeCategory,
-} from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
@@ -46,7 +41,6 @@ export default function ListingsCatalogClient({
   const { language } = useLanguage();
   const t = translations[language].listings;
 
-  const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("search")?.trim() ?? "");
   const [selectedType, setSelectedType] = useState(searchParams?.get("type")?.trim() ?? "all");
   const [selectedPurpose, setSelectedPurpose] = useState<ListingPurpose | "all">(
@@ -65,8 +59,6 @@ export default function ListingsCatalogClient({
     setSelectedPurpose((searchParams?.get("purpose") as ListingPurpose | null) ?? "all");
   }, [searchParams]);
 
-  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
-
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (priceDropdownRef.current && !priceDropdownRef.current.contains(event.target as Node)) {
@@ -76,18 +68,6 @@ export default function ListingsCatalogClient({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Property types offered in the type dropdown narrow down to the chosen purpose
-  // (a rent-only type like "Sublet" has no sale equivalent, and vice versa).
-  const visibleCategories =
-    selectedPurpose === "all"
-      ? propertyTypeCategories
-      : propertyTypeCategories.filter((category) => category.purpose === selectedPurpose);
-  const visibleTypes = visibleCategories.map((category) => category.en);
-  const categoryLabels: Record<string, string> = {};
-  for (const category of propertyTypeCategories) {
-    categoryLabels[category.en] = language === "bn" ? category.bn : category.en;
-  }
 
   // Everything except the price filter — reused both to filter the grid and to
   // compute a live "ads" count per price band, so those counts reflect the
@@ -154,60 +134,7 @@ export default function ListingsCatalogClient({
     <main className="bg-gray-50">
       <section className="bg-white py-10">
         <div className="container mx-auto px-4">
-          <h1 className="mb-6 text-center text-3xl font-bold text-gray-900">
-            {t.browseTitle}
-          </h1>
-
           <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder={t.searchPlaceholder}
-                className="w-full rounded-md border border-gray-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-green-500"
-              />
-            </div>
-
-            <select
-              value={selectedType}
-              onChange={(event) => setSelectedType(event.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
-            >
-              <option value="all">{t.allPropertyTypes}</option>
-              {visibleTypes.map((type) => (
-                <option key={type} value={type}>
-                  {categoryLabels[type] ?? type}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedPurpose}
-              onChange={(event) => {
-                const nextPurpose = event.target.value as ListingPurpose | "all";
-                setSelectedPurpose(nextPurpose);
-                const nextVisibleTypes =
-                  nextPurpose === "all"
-                    ? propertyTypeCategories.map((category) => category.en)
-                    : propertyTypeCategories
-                        .filter((category) => category.purpose === nextPurpose)
-                        .map((category) => category.en);
-                if (!nextVisibleTypes.includes(selectedType)) {
-                  setSelectedType("all");
-                }
-              }}
-              className="rounded-md border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-green-500"
-            >
-              <option value="all">{t.saleAndRent}</option>
-              <option value="sale">{t.forSale}</option>
-              <option value="rent">{t.forRent}</option>
-            </select>
-
             <div className="relative" ref={priceDropdownRef}>
               <button
                 type="button"
@@ -225,15 +152,24 @@ export default function ListingsCatalogClient({
                 <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-900">{t.priceHeading}</span>
-                    {isPriceFilterActive && (
+                    <div className="flex items-center gap-3">
+                      {isPriceFilterActive && (
+                        <button
+                          type="button"
+                          onClick={clearPriceFilter}
+                          className="text-xs font-medium text-green-600 hover:underline"
+                        >
+                          {t.priceClear}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={clearPriceFilter}
-                        className="text-xs font-medium text-green-600 hover:underline"
+                        onClick={() => setIsPriceOpen(false)}
+                        className="rounded-md bg-green-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-green-700"
                       >
-                        {t.priceClear}
+                        {t.priceApply}
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   <div className="mb-4 flex items-center gap-2">

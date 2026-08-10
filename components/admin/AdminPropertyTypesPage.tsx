@@ -18,12 +18,32 @@ import {
   updatePropertyTypeCategory,
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
+import {
+  DEFAULT_PROPERTY_TYPE_ICON,
+  getPropertyTypeIcon,
+  PROPERTY_TYPE_ICON_OPTIONS,
+} from "@/lib/property-type-icons";
 
 const selectClassName =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm";
 
 function isFallbackList(categories: PropertyTypeCategory[]) {
   return categories.length > 0 && categories.every((category) => category.id.startsWith("default-"));
+}
+
+/** Surfaces *why* a write failed instead of a bare "Could not save category" —
+ * a permission-denied error almost always means firestore.rules hasn't been
+ * deployed yet (`firebase deploy --only firestore:rules`), which is easy to
+ * miss since reads still work fine off the built-in fallback list. */
+function describeSaveError(error: unknown): string {
+  const code = (error as { code?: string } | null)?.code ?? "";
+  if (code === "permission-denied") {
+    return "Permission denied by Firestore rules — the propertyTypeCategories write rule may not be deployed yet (firebase deploy --only firestore:rules).";
+  }
+  if (code === "unavailable") {
+    return "Could not reach Firestore. Check your connection and try again.";
+  }
+  return "Please try again.";
 }
 
 export default function AdminPropertyTypesPage() {
@@ -35,6 +55,7 @@ export default function AdminPropertyTypesPage() {
   const [purpose, setPurpose] = useState<ListingPurpose>("rent");
   const [en, setEn] = useState("");
   const [bn, setBn] = useState("");
+  const [icon, setIcon] = useState(DEFAULT_PROPERTY_TYPE_ICON);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -54,8 +75,12 @@ export default function AdminPropertyTypesPage() {
     hasTriggeredSeed.current = true;
     setIsSeeding(true);
     seedDefaultPropertyTypeCategories()
-      .catch(() => {
-        toast({ title: "Could not load default categories", variant: "destructive" });
+      .catch((error) => {
+        toast({
+          title: "Could not load default categories",
+          description: describeSaveError(error),
+          variant: "destructive",
+        });
         hasTriggeredSeed.current = false;
       })
       .finally(() => setIsSeeding(false));
@@ -67,6 +92,7 @@ export default function AdminPropertyTypesPage() {
     setEditingId(null);
     setEn("");
     setBn("");
+    setIcon(DEFAULT_PROPERTY_TYPE_ICON);
     setPurpose("rent");
   }
 
@@ -75,6 +101,7 @@ export default function AdminPropertyTypesPage() {
     setPurpose(category.purpose);
     setEn(category.en);
     setBn(category.bn);
+    setIcon(category.icon);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -86,15 +113,19 @@ export default function AdminPropertyTypesPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await updatePropertyTypeCategory(editingId, { purpose, en: en.trim(), bn: bn.trim() });
+        await updatePropertyTypeCategory(editingId, { purpose, en: en.trim(), bn: bn.trim(), icon });
         toast({ title: "Category updated" });
       } else {
-        await addPropertyTypeCategory({ purpose, en: en.trim(), bn: bn.trim() });
+        await addPropertyTypeCategory({ purpose, en: en.trim(), bn: bn.trim(), icon });
         toast({ title: "Category added" });
       }
       resetForm();
-    } catch {
-      toast({ title: "Could not save category", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "Could not save category",
+        description: describeSaveError(error),
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -155,6 +186,28 @@ export default function AdminPropertyTypesPage() {
             <div className="space-y-2">
               <Label htmlFor="categoryBn">Name (বাংলা)</Label>
               <Input id="categoryBn" value={bn} onChange={(event) => setBn(event.target.value)} placeholder="যেমন: ডুপ্লেক্স ভাড়া" />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+              <Label>Icon</Label>
+              <div className="flex flex-wrap gap-2">
+                {PROPERTY_TYPE_ICON_OPTIONS.map(({ key, Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setIcon(key)}
+                    aria-label={key}
+                    aria-pressed={icon === key}
+                    className={`flex h-10 w-10 items-center justify-center rounded-md border transition ${
+                      icon === key
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-input text-slate-500 hover:border-blue-300 hover:text-blue-600"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-end gap-2">
@@ -223,11 +276,18 @@ function CategoryListCard({
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {categories.map((category) => (
+            {categories.map((category) => {
+              const CategoryIcon = getPropertyTypeIcon(category.icon);
+              return (
               <li key={category.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-blue-950">{category.en}</p>
-                  <p className="truncate text-sm text-gray-500">{category.bn}</p>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-600">
+                    <CategoryIcon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-blue-950">{category.en}</p>
+                    <p className="truncate text-sm text-gray-500">{category.bn}</p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(category)}>
@@ -249,7 +309,8 @@ function CategoryListCard({
                   </Button>
                 </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </CardContent>

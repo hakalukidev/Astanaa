@@ -13,6 +13,7 @@ import {
 
 import { db } from "@/lib/firebase";
 import type { ListingPurpose } from "@/lib/listings";
+import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
 
 export const PROPERTY_TYPE_CATEGORIES_COLLECTION = "propertyTypeCategories";
 
@@ -21,6 +22,7 @@ export type PropertyTypeCategory = {
   purpose: ListingPurpose;
   en: string;
   bn: string;
+  icon: string;
   order: number;
   createdAtMs: number | null;
 };
@@ -29,6 +31,7 @@ export type PropertyTypeCategoryInput = {
   purpose: ListingPurpose;
   en: string;
   bn: string;
+  icon?: string;
 };
 
 /**
@@ -39,23 +42,23 @@ export type PropertyTypeCategoryInput = {
  * the admin page yet).
  */
 export const DEFAULT_PROPERTY_TYPE_CATEGORIES: PropertyTypeCategoryInput[] = [
-  { purpose: "rent", en: "Flat Rent", bn: "ফ্ল্যাট ভাড়া" },
-  { purpose: "rent", en: "Sublet", bn: "সাবলেট" },
-  { purpose: "rent", en: "Roommate", bn: "রুমমেট" },
-  { purpose: "rent", en: "Shop", bn: "দোকান" },
-  { purpose: "rent", en: "Office/Commercial Space", bn: "অফিস/কমার্শিয়াল স্পেস" },
-  { purpose: "rent", en: "Sublet Office", bn: "সাবলেট অফিস" },
-  { purpose: "rent", en: "Warehouse", bn: "গুদাম" },
-  { purpose: "rent", en: "Motorcycle Garage", bn: "মোটরসাইকেল গ্যারেজ" },
-  { purpose: "rent", en: "Car Garage", bn: "কার গ্যারেজ" },
-  { purpose: "sale", en: "Flat Sell", bn: "ফ্ল্যাট বিক্রি" },
-  { purpose: "sale", en: "Shop Sell", bn: "দোকান বিক্রি" },
-  { purpose: "sale", en: "Office/Commercial Space Sell", bn: "অফিস/কমার্শিয়াল স্পেস বিক্রি" },
-  { purpose: "sale", en: "Warehouse", bn: "গুদাম" },
-  { purpose: "sale", en: "Building With Land Sell", bn: "জমিসহ ভবন বিক্রি" },
-  { purpose: "sale", en: "Land Sell", bn: "জমি বিক্রি" },
-  { purpose: "sale", en: "Motorcycle Garage Sell", bn: "মোটরসাইকেল গ্যারেজ বিক্রি" },
-  { purpose: "sale", en: "Car Garage Sell", bn: "কার গ্যারেজ বিক্রি" },
+  { purpose: "rent", en: "Flat Rent", bn: "ফ্ল্যাট ভাড়া", icon: "Building2" },
+  { purpose: "rent", en: "Sublet", bn: "সাবলেট", icon: "DoorOpen" },
+  { purpose: "rent", en: "Roommate", bn: "রুমমেট", icon: "Users" },
+  { purpose: "rent", en: "Shop", bn: "দোকান", icon: "Store" },
+  { purpose: "rent", en: "Office/Commercial Space", bn: "অফিস/কমার্শিয়াল স্পেস", icon: "Briefcase" },
+  { purpose: "rent", en: "Sublet Office", bn: "সাবলেট অফিস", icon: "DoorOpen" },
+  { purpose: "rent", en: "Warehouse", bn: "গুদাম", icon: "Warehouse" },
+  { purpose: "rent", en: "Motorcycle Garage", bn: "মোটরসাইকেল গ্যারেজ", icon: "Bike" },
+  { purpose: "rent", en: "Car Garage", bn: "কার গ্যারেজ", icon: "Car" },
+  { purpose: "sale", en: "Flat Sell", bn: "ফ্ল্যাট বিক্রি", icon: "Building2" },
+  { purpose: "sale", en: "Shop Sell", bn: "দোকান বিক্রি", icon: "Store" },
+  { purpose: "sale", en: "Office/Commercial Space Sell", bn: "অফিস/কমার্শিয়াল স্পেস বিক্রি", icon: "Briefcase" },
+  { purpose: "sale", en: "Warehouse", bn: "গুদাম", icon: "Warehouse" },
+  { purpose: "sale", en: "Building With Land Sell", bn: "জমিসহ ভবন বিক্রি", icon: "Building" },
+  { purpose: "sale", en: "Land Sell", bn: "জমি বিক্রি", icon: "Trees" },
+  { purpose: "sale", en: "Motorcycle Garage Sell", bn: "মোটরসাইকেল গ্যারেজ বিক্রি", icon: "Bike" },
+  { purpose: "sale", en: "Car Garage Sell", bn: "কার গ্যারেজ বিক্রি", icon: "Car" },
 ];
 
 function getTimestampMs(value: unknown) {
@@ -76,6 +79,7 @@ function mapCategory(snapshot: QueryDocumentSnapshot<DocumentData>): PropertyTyp
     purpose: data.purpose === "rent" ? "rent" : "sale",
     en: typeof data.en === "string" ? data.en : "",
     bn: typeof data.bn === "string" ? data.bn : "",
+    icon: typeof data.icon === "string" && data.icon ? data.icon : DEFAULT_PROPERTY_TYPE_ICON,
     order: typeof data.order === "number" ? data.order : 0,
     createdAtMs: getTimestampMs(data.createdAt),
   };
@@ -99,6 +103,7 @@ const FALLBACK_CATEGORIES: PropertyTypeCategory[] = DEFAULT_PROPERTY_TYPE_CATEGO
     order: index,
     createdAtMs: null,
     ...entry,
+    icon: entry.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
   })
 );
 
@@ -155,6 +160,7 @@ export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) 
 
   await addDoc(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION), {
     ...input,
+    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
     order: maxOrder + 1,
     createdAt: serverTimestamp(),
   });
@@ -166,7 +172,10 @@ export async function updatePropertyTypeCategory(id: string, input: PropertyType
     throw new Error("Category data is not available.");
   }
 
-  await updateDoc(doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id), { ...input });
+  await updateDoc(doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id), {
+    ...input,
+    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
+  });
 }
 
 /** Staff-admin only (enforced by firestore.rules). */

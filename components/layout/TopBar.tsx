@@ -2,14 +2,8 @@
 
 import {
   Bell,
-  Bike,
-  Briefcase,
-  Building,
-  Building2,
-  Car,
   ChevronDown,
   ChevronRight,
-  DoorOpen,
   KeyRound,
   LayoutGrid,
   LogOut,
@@ -17,12 +11,8 @@ import {
   MessageCircle,
   Plus,
   Search,
-  Store,
   Tag,
-  Trees,
   User,
-  Users,
-  Warehouse,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -45,6 +35,7 @@ import {
   subscribeToPropertyTypeCategories,
   type PropertyTypeCategory,
 } from '@/lib/property-type-categories';
+import { getPropertyTypeIcon } from '@/lib/property-type-icons';
 import { translations } from '@/lib/site-translations';
 
 const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
@@ -102,26 +93,6 @@ function FlagIcon({ language, className }: { language: 'bn' | 'en'; className?: 
   );
 }
 
-/** Icon shown before each property-type row in the Browse menu — falls back to Building2. */
-const PROPERTY_TYPE_ICONS: Record<string, LucideIcon> = {
-  'Flat Rent': Building2,
-  Sublet: DoorOpen,
-  Roommate: Users,
-  Shop: Store,
-  'Office/Commercial Space': Briefcase,
-  'Sublet Office': DoorOpen,
-  Warehouse: Warehouse,
-  'Motorcycle Garage': Bike,
-  'Car Garage': Car,
-  'Flat Sell': Building2,
-  'Shop Sell': Store,
-  'Office/Commercial Space Sell': Briefcase,
-  'Building With Land Sell': Building,
-  'Land Sell': Trees,
-  'Motorcycle Garage Sell': Bike,
-  'Car Garage Sell': Car,
-};
-
 function LanguageToggle({ compact = false }: { compact?: boolean }) {
   const { language, toggleLanguage } = useLanguage();
 
@@ -144,8 +115,8 @@ function PropertyTypeGroup({
   purpose,
   label,
   groupIcon: GroupIcon,
-  types,
-  propertyTypeLabels,
+  categories,
+  language,
   isExpanded,
   onToggle,
   onSelect,
@@ -154,8 +125,8 @@ function PropertyTypeGroup({
   purpose: ListingPurpose;
   label: string;
   groupIcon: LucideIcon;
-  types: readonly string[];
-  propertyTypeLabels: Record<string, string>;
+  categories: PropertyTypeCategory[];
+  language: 'en' | 'bn';
   isExpanded: boolean;
   onToggle: () => void;
   onSelect: (type: string, purpose: ListingPurpose) => void;
@@ -181,13 +152,13 @@ function PropertyTypeGroup({
 
       {isExpanded && (
         <ul className={light ? 'bg-gray-50 py-1' : 'ml-4 space-y-1 border-l-2 border-white/20 pl-3 py-1'}>
-          {types.map((type) => {
-            const TypeIcon = PROPERTY_TYPE_ICONS[type] ?? Building2;
+          {categories.map((category) => {
+            const TypeIcon = getPropertyTypeIcon(category.icon);
             return (
-              <li key={type}>
+              <li key={category.id}>
                 <button
                   type="button"
-                  onClick={() => onSelect(type, purpose)}
+                  onClick={() => onSelect(category.en, purpose)}
                   className={`flex w-full items-center gap-2 text-left text-sm transition ${
                     light
                       ? 'px-7 py-1.5 text-gray-600 hover:bg-brand-mint/15 hover:text-brand-navy'
@@ -195,7 +166,7 @@ function PropertyTypeGroup({
                   }`}
                 >
                   <TypeIcon size={14} className="shrink-0" />
-                  {propertyTypeLabels[type] ?? type}
+                  {language === 'bn' ? category.bn : category.en}
                 </button>
               </li>
             );
@@ -350,13 +321,6 @@ export default function TopBar() {
     () => groupCategoriesByPurpose(propertyTypeCategories),
     [propertyTypeCategories]
   );
-  const categoryLabels = useMemo(() => {
-    const labels: Record<string, string> = {};
-    for (const category of propertyTypeCategories) {
-      labels[category.en] = language === 'bn' ? category.bn : category.en;
-    }
-    return labels;
-  }, [propertyTypeCategories, language]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -458,8 +422,8 @@ export default function TopBar() {
                   purpose="rent"
                   label={t.listings.forRent}
                   groupIcon={KeyRound}
-                  types={categoriesByPurpose.rent.map((category) => category.en)}
-                  propertyTypeLabels={categoryLabels}
+                  categories={categoriesByPurpose.rent}
+                  language={language}
                   isExpanded={expandedGroup === 'rent'}
                   onToggle={() => toggleGroup('rent')}
                   onSelect={goToPropertyType}
@@ -469,8 +433,8 @@ export default function TopBar() {
                   purpose="sale"
                   label={t.listings.forSale}
                   groupIcon={Tag}
-                  types={categoriesByPurpose.sale.map((category) => category.en)}
-                  propertyTypeLabels={categoryLabels}
+                  categories={categoriesByPurpose.sale}
+                  language={language}
                   isExpanded={expandedGroup === 'sale'}
                   onToggle={() => toggleGroup('sale')}
                   onSelect={goToPropertyType}
@@ -630,8 +594,8 @@ export default function TopBar() {
                     purpose="rent"
                     label={t.listings.forRent}
                     groupIcon={KeyRound}
-                    types={categoriesByPurpose.rent.map((category) => category.en)}
-                    propertyTypeLabels={categoryLabels}
+                    categories={categoriesByPurpose.rent}
+                    language={language}
                     isExpanded={expandedGroup === 'rent'}
                     onToggle={() => toggleGroup('rent')}
                     onSelect={goToPropertyType}
@@ -641,8 +605,8 @@ export default function TopBar() {
                     purpose="sale"
                     label={t.listings.forSale}
                     groupIcon={Tag}
-                    types={categoriesByPurpose.sale.map((category) => category.en)}
-                    propertyTypeLabels={categoryLabels}
+                    categories={categoriesByPurpose.sale}
+                    language={language}
                     isExpanded={expandedGroup === 'sale'}
                     onToggle={() => toggleGroup('sale')}
                     onSelect={goToPropertyType}
