@@ -258,8 +258,24 @@ function LocationSearchResults({
  * a selection (no need to go all the way to Area). If `query` is non-empty,
  * that drill-down is swapped for a flat whole-tree text search instead, so
  * typing directly into the search box finds a location without clicking
- * through every level. */
-function LocationSearchPicker({ query, onSelect }: { query: string; onSelect: (node: LocationNode) => void }) {
+ * through every level.
+ *
+ * The two ways to pick get different callbacks on purpose: a cascade click
+ * is one step of a possibly-unfinished drill-down (Division picked doesn't
+ * mean "done", District might come next), so `onSelect` must leave the query
+ * empty and the panel open. A search-result click is already the final,
+ * specific place the user typed for, so `onSelectResult` is the one that
+ * should stick — fill the box with that exact pick and close up, not fall
+ * back to the Division list. */
+function LocationSearchPicker({
+  query,
+  onSelect,
+  onSelectResult,
+}: {
+  query: string;
+  onSelect: (node: LocationNode) => void;
+  onSelectResult: (node: LocationNode) => void;
+}) {
   const { language } = useLanguage();
   const [nodes, setNodes] = useState<LocationNode[]>([]);
   const [value, setValue] = useState<LocationCascadeValue>(EMPTY_LOCATION_VALUE);
@@ -277,7 +293,7 @@ function LocationSearchPicker({ query, onSelect }: { query: string; onSelect: (n
   const trimmedQuery = query.trim();
   if (trimmedQuery) {
     const results = searchLocationNodes(nodes, trimmedQuery);
-    return <LocationSearchResults results={results} onSelect={onSelect} language={language} />;
+    return <LocationSearchResults results={results} onSelect={onSelectResult} language={language} />;
   }
 
   return <LocationCascadeSelect value={value} onChange={handleChange} />;
@@ -511,8 +527,23 @@ export default function TopBar() {
   // (desktop) or tapping the search icon again (mobile).
   function handleLocationSelect(node: LocationNode) {
     setSelectedLocation({ en: node.en, bn: node.bn });
+    // Reset the typed query, not fill it with the picked name — filling it
+    // would make the box non-empty right after a level-by-level pick too,
+    // which flips LocationSearchPicker into flat-search mode and kills the
+    // Division -> District -> ... drill-down after the very first click.
+    setLocationQuery('');
+    router.push(`/listings?search=${encodeURIComponent(node.en)}`);
+  }
+
+  // A flat search-result pick (as opposed to a cascade level pick) is
+  // already the exact, final place the user was looking for — so unlike
+  // handleLocationSelect, this fills the box with that pick and closes the
+  // panel instead of leaving it open on an empty Division list.
+  function handleLocationResultSelect(node: LocationNode, closePanel: () => void) {
+    setSelectedLocation({ en: node.en, bn: node.bn });
     setLocationQuery(language === 'bn' ? node.bn : node.en);
     router.push(`/listings?search=${encodeURIComponent(node.en)}`);
+    closePanel();
   }
 
   function clearLocationSearch() {
@@ -592,7 +623,11 @@ export default function TopBar() {
                   setIsLocationSearchOpen(true);
                 }}
                 onFocus={() => setIsLocationSearchOpen(true)}
-                placeholder={t.topbar.searchPlaceholder}
+                placeholder={
+                  selectedLocation
+                    ? (language === 'bn' ? selectedLocation.bn : selectedLocation.en)
+                    : t.topbar.searchPlaceholder
+                }
                 className="w-full rounded-md border border-transparent bg-white py-1.5 pl-9 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand-mint"
               />
             </div>
@@ -609,7 +644,11 @@ export default function TopBar() {
 
             {isLocationSearchOpen && (
               <div className="absolute left-0 top-full z-50 mt-2 w-fit max-w-[90vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-                <LocationSearchPicker query={locationQuery} onSelect={handleLocationSelect} />
+                <LocationSearchPicker
+                  query={locationQuery}
+                  onSelect={handleLocationSelect}
+                  onSelectResult={(node) => handleLocationResultSelect(node, () => setIsLocationSearchOpen(false))}
+                />
               </div>
             )}
           </div>
@@ -720,7 +759,11 @@ export default function TopBar() {
                 type="text"
                 value={locationQuery}
                 onChange={(event) => setLocationQuery(event.target.value)}
-                placeholder={t.topbar.searchPlaceholder}
+                placeholder={
+                  selectedLocation
+                    ? (language === 'bn' ? selectedLocation.bn : selectedLocation.en)
+                    : t.topbar.searchPlaceholder
+                }
                 className="w-full rounded-md border border-gray-200 py-1.5 pl-9 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand-mint"
               />
               {(selectedLocation || locationQuery) && (
@@ -734,7 +777,11 @@ export default function TopBar() {
                 </button>
               )}
             </div>
-            <LocationSearchPicker query={locationQuery} onSelect={handleLocationSelect} />
+            <LocationSearchPicker
+              query={locationQuery}
+              onSelect={handleLocationSelect}
+              onSelectResult={(node) => handleLocationResultSelect(node, () => setIsSearchOpen(false))}
+            />
           </div>
         )}
 
