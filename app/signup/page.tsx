@@ -1,10 +1,11 @@
 "use client";
 
-import { Loader2, UserPlus } from "lucide-react";
+import { CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { Captcha, type CaptchaPayload } from "@/components/auth/Captcha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { translations } from "@/lib/site-translations";
 import { getTermsAndConditions } from "@/lib/terms";
+
+type OtpChannel = "email" | "phone";
+type OtpStage = "idle" | "sent" | "verified";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -32,17 +36,107 @@ export default function SignUpPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Signup-verification OTP: user picks a channel, we send a code there, and
+  // the "Create account" button stays locked until it's verified.
+  const [channel, setChannel] = useState<OtpChannel>("email");
+  const [captchaPayload, setCaptchaPayload] = useState<CaptchaPayload | null>(null);
+  const [otpStage, setOtpStage] = useState<OtpStage>("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState("");
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+
+  const contactValue = channel === "email" ? email : phone;
+
   useEffect(() => {
     getTermsAndConditions()
       .then(setTermsContent)
       .finally(() => setIsTermsLoading(false));
   }, []);
 
+  function resetOtpState() {
+    setOtpStage("idle");
+    setOtpCode("");
+    setVerifiedToken(null);
+    setOtpError("");
+  }
+
+  function handleChannelChange(next: OtpChannel) {
+    setChannel(next);
+    resetOtpState();
+  }
+
+  async function handleSendCode() {
+    setOtpError("");
+
+    if (!contactValue.trim() || !captchaPayload) {
+      setOtpError(t.otpSendError);
+      return;
+    }
+
+    setIsSendingCode(true);
+
+    try {
+      const response = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: contactValue, channel, captcha: captchaPayload }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        setOtpError(data?.error ?? t.otpSendError);
+        return;
+      }
+
+      setOtpStage("sent");
+      setOtpCode("");
+    } catch {
+      setOtpError(t.otpSendError);
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
+
+  async function handleVerifyCode() {
+    setOtpError("");
+    setIsVerifyingCode(true);
+
+    try {
+      const response = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: contactValue, channel, code: otpCode }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string; verifiedToken?: string }
+        | null;
+
+      if (!response.ok || !data?.verifiedToken) {
+        setOtpError(data?.error ?? t.otpInvalid);
+        return;
+      }
+
+      setVerifiedToken(data.verifiedToken);
+      setOtpStage("verified");
+    } catch {
+      setOtpError(t.otpInvalid);
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!agreedToTerms) {
       setErrorMessage(t.termsRequiredError);
+      return;
+    }
+
+    if (otpStage !== "verified" || !verifiedToken) {
+      setErrorMessage(t.verifyRequiredError);
       return;
     }
 
@@ -103,6 +197,7 @@ export default function SignUpPage() {
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 placeholder="01XXXXXXXXX"
+                disabled={otpStage === "verified" && channel === "phone"}
                 required
               />
             </div>
@@ -114,6 +209,7 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
+                disabled={otpStage === "verified" && channel === "email"}
                 required
               />
             </div>
@@ -128,6 +224,95 @@ export default function SignUpPage() {
                 minLength={6}
                 required
               />
+            </div>
+
+            <div className="space-y-3 rounded-md border border-gray-200 p-3">
+              <Label>{t.verifyVia}</Label>
+              <div className="flex gap-4 text-sm text-gray-700">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    name="otp-channel"
+                    checked={channel === "email"}
+                    onChange={() => handleChannelChange("email")}
+                    disabled={otpStage === "verified"}
+                  />
+                  {t.verifyEmail}
+                </label>
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    name="otp-channel"
+                    checked={channel === "phone"}
+                    onChange={() => handleChannelChange("phone")}
+                    disabled={otpStage === "verified"}
+                  />
+                  {t.verifyPhone}
+                </label>
+              </div>
+
+              {otpStage === "verified" ? (
+                <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-green-600">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  {t.verifiedBadge} · {contactValue}
+                  <button
+                    type="button"
+                    onClick={resetOtpState}
+                    className="ml-1 text-xs font-normal text-gray-500 hover:underline"
+                  >
+                    {t.changeContact}
+                  </button>
+                </p>
+              ) : (
+                <>
+                  <Captcha label={t.captchaLabel} onChange={setCaptchaPayload} />
+
+                  {otpStage === "idle" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleSendCode}
+                      disabled={isSendingCode}
+                    >
+                      {isSendingCode ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {isSendingCode ? t.sendingCode : t.sendCode}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500">
+                        {t.codeSentTo} {contactValue}
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={otpCode}
+                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
+                          placeholder={t.codePlaceholder}
+                          inputMode="numeric"
+                          maxLength={6}
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleVerifyCode}
+                          disabled={isVerifyingCode || otpCode.length < 4}
+                        >
+                          {isVerifyingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t.verifyCode}
+                        </Button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSendCode}
+                        disabled={isSendingCode}
+                        className="text-xs font-medium text-green-600 hover:underline disabled:opacity-50"
+                      >
+                        {t.resendCode}
+                      </button>
+                    </div>
+                  )}
+
+                  {otpError ? <p className="text-xs font-medium text-red-600">{otpError}</p> : null}
+                </>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -160,7 +345,7 @@ export default function SignUpPage() {
             <Button
               type="submit"
               className="w-full bg-green-600 hover:bg-green-700"
-              disabled={isSubmitting || !agreedToTerms}
+              disabled={isSubmitting || !agreedToTerms || otpStage !== "verified"}
             >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t.submit}
