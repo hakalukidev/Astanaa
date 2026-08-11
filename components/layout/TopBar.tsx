@@ -23,7 +23,7 @@ import LocationCascadeSelect, { type LocationCascadeValue } from '@/components/l
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { subscribeToListingPurposes, type ListingPurposeRecord } from '@/lib/listing-purposes';
-import { childrenOf, subscribeToLocationNodes, type LocationNode } from '@/lib/location-nodes';
+import { childrenOf, searchLocationNodes, subscribeToLocationNodes, type LocationNode } from '@/lib/location-nodes';
 import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
 import {
   markAllNotificationsRead,
@@ -205,10 +205,62 @@ function findDeepestLocationNode(nodes: LocationNode[], value: LocationCascadeVa
   return deepest;
 }
 
+/** Flat list of whole-tree text-search hits (see lib/location-nodes.ts
+ * searchLocationNodes) — each row shows the matched name plus its ancestor
+ * chain, so a match found deep in the tree (e.g. a Thana) is still
+ * identifiable without having drilled down to it. */
+function LocationSearchResults({
+  results,
+  onSelect,
+  language,
+}: {
+  results: { node: LocationNode; path: LocationNode[] }[];
+  onSelect: (node: LocationNode) => void;
+  language: 'en' | 'bn';
+}) {
+  if (results.length === 0) {
+    return (
+      <div className="w-72 max-w-full border border-gray-200 px-3 py-4 text-center text-xs text-gray-400">
+        {language === 'bn' ? 'কিছু পাওয়া যায়নি' : 'No matches'}
+      </div>
+    );
+  }
+
+  return (
+    <ul className="max-h-72 w-72 max-w-full overflow-y-auto border border-gray-200">
+      {results.map(({ node, path }) => {
+        const ancestry = path.slice(0, -1);
+        return (
+          <li key={node.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(node)}
+              className="block w-full px-3 py-2 text-left text-sm transition hover:bg-green-50"
+            >
+              <div className="truncate font-medium text-gray-800">
+                {language === 'bn' ? node.bn : node.en}
+              </div>
+              {ancestry.length > 0 && (
+                <div className="truncate text-xs text-gray-400">
+                  {ancestry.map((ancestor) => (language === 'bn' ? ancestor.bn : ancestor.en)).join(' / ')}
+                </div>
+              )}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** Drills Division -> District -> Upazila -> Area exactly like the post-ad
  * form and admin Locations page do — picking a node at any depth counts as
- * a selection (no need to go all the way to Area). */
-function LocationSearchPicker({ onSelect }: { onSelect: (node: LocationNode) => void }) {
+ * a selection (no need to go all the way to Area). If `query` is non-empty,
+ * that drill-down is swapped for a flat whole-tree text search instead, so
+ * typing directly into the search box finds a location without clicking
+ * through every level. */
+function LocationSearchPicker({ query, onSelect }: { query: string; onSelect: (node: LocationNode) => void }) {
+  const { language } = useLanguage();
   const [nodes, setNodes] = useState<LocationNode[]>([]);
   const [value, setValue] = useState<LocationCascadeValue>(EMPTY_LOCATION_VALUE);
 
@@ -220,6 +272,12 @@ function LocationSearchPicker({ onSelect }: { onSelect: (node: LocationNode) => 
     if (deepest) {
       onSelect(deepest);
     }
+  }
+
+  const trimmedQuery = query.trim();
+  if (trimmedQuery) {
+    const results = searchLocationNodes(nodes, trimmedQuery);
+    return <LocationSearchResults results={results} onSelect={onSelect} language={language} />;
   }
 
   return <LocationCascadeSelect value={value} onChange={handleChange} />;
@@ -344,6 +402,7 @@ export default function TopBar() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ en: string; bn: string } | null>(null);
+  const [locationQuery, setLocationQuery] = useState('');
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
@@ -452,11 +511,13 @@ export default function TopBar() {
   // (desktop) or tapping the search icon again (mobile).
   function handleLocationSelect(node: LocationNode) {
     setSelectedLocation({ en: node.en, bn: node.bn });
+    setLocationQuery(language === 'bn' ? node.bn : node.en);
     router.push(`/listings?search=${encodeURIComponent(node.en)}`);
   }
 
   function clearLocationSearch() {
     setSelectedLocation(null);
+    setLocationQuery('');
     router.push('/listings');
     setIsLocationSearchOpen(false);
   }
@@ -521,19 +582,21 @@ export default function TopBar() {
           </div>
 
           <div className="relative w-72" ref={locationSearchDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsLocationSearchOpen((open) => !open)}
-              className="relative flex w-full items-center rounded-md border border-transparent bg-white py-1.5 pl-9 pr-8 text-left text-sm outline-none focus:border-brand-mint"
-            >
+            <div className="relative flex w-full items-center">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <span className={`truncate ${selectedLocation ? 'text-gray-900' : 'text-gray-400'}`}>
-                {selectedLocation
-                  ? (language === 'bn' ? selectedLocation.bn : selectedLocation.en)
-                  : t.topbar.searchPlaceholder}
-              </span>
-            </button>
-            {selectedLocation && (
+              <input
+                type="text"
+                value={locationQuery}
+                onChange={(event) => {
+                  setLocationQuery(event.target.value);
+                  setIsLocationSearchOpen(true);
+                }}
+                onFocus={() => setIsLocationSearchOpen(true)}
+                placeholder={t.topbar.searchPlaceholder}
+                className="w-full rounded-md border border-transparent bg-white py-1.5 pl-9 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand-mint"
+              />
+            </div>
+            {(selectedLocation || locationQuery) && (
               <button
                 type="button"
                 onClick={clearLocationSearch}
@@ -546,7 +609,7 @@ export default function TopBar() {
 
             {isLocationSearchOpen && (
               <div className="absolute left-0 top-full z-50 mt-2 w-fit max-w-[90vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-                <LocationSearchPicker onSelect={handleLocationSelect} />
+                <LocationSearchPicker query={locationQuery} onSelect={handleLocationSelect} />
               </div>
             )}
           </div>
@@ -650,18 +713,28 @@ export default function TopBar() {
         </div>
 
         {isSearchOpen && (
-          <div className="lg:hidden mt-3 rounded-lg border border-gray-200 bg-white p-3">
-            {selectedLocation && (
-              <div className="mb-2 flex items-center justify-between gap-2 rounded-md bg-brand-mint/15 px-3 py-2 text-sm font-medium text-brand-navy">
-                <span className="truncate">
-                  {language === 'bn' ? selectedLocation.bn : selectedLocation.en}
-                </span>
-                <button type="button" onClick={clearLocationSearch} aria-label="Clear location" className="shrink-0">
+          <div className="lg:hidden mt-3 space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+            <div className="relative flex w-full items-center">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={locationQuery}
+                onChange={(event) => setLocationQuery(event.target.value)}
+                placeholder={t.topbar.searchPlaceholder}
+                className="w-full rounded-md border border-gray-200 py-1.5 pl-9 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand-mint"
+              />
+              {(selectedLocation || locationQuery) && (
+                <button
+                  type="button"
+                  onClick={clearLocationSearch}
+                  aria-label="Clear location"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
                   <X size={14} />
                 </button>
-              </div>
-            )}
-            <LocationSearchPicker onSelect={handleLocationSelect} />
+              )}
+            </div>
+            <LocationSearchPicker query={locationQuery} onSelect={handleLocationSelect} />
           </div>
         )}
 

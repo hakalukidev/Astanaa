@@ -95,6 +95,47 @@ export function childrenOf(nodes: LocationNode[], parentId: string | null): Loca
   });
 }
 
+/**
+ * Flat, whole-tree text search — matches a node's own en/bn name (case-
+ * insensitive substring) at any depth, so typing e.g. "sadar" finds every
+ * "Sadar" upazila across all divisions instead of only whatever single
+ * column happens to be open in the cascade picker. Each hit carries its full
+ * ancestor chain (root -> ... -> node) so callers can show a breadcrumb next
+ * to the name. Capped so a broad query doesn't dump the whole tree into a
+ * dropdown.
+ */
+export function searchLocationNodes(
+  nodes: LocationNode[],
+  rawQuery: string,
+  limit = 30
+): { node: LocationNode; path: LocationNode[] }[] {
+  const query = rawQuery.trim();
+  const normalized = query.toLowerCase();
+  if (!normalized) {
+    return [];
+  }
+
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+
+  function pathTo(node: LocationNode): LocationNode[] {
+    const path: LocationNode[] = [node];
+    let parentId = node.parentId;
+    while (parentId) {
+      const parent = byId.get(parentId);
+      if (!parent) break;
+      path.unshift(parent);
+      parentId = parent.parentId;
+    }
+    return path;
+  }
+
+  return nodes
+    .filter((node) => node.en.toLowerCase().includes(normalized) || node.bn.includes(query))
+    .sort((left, right) => left.en.localeCompare(right.en))
+    .slice(0, limit)
+    .map((node) => ({ node, path: pathTo(node) }));
+}
+
 /** Every fallback node's id starts with this — lets callers tell "seed data" from real Firestore docs. */
 const FALLBACK_ID_PREFIX = "seed-";
 
