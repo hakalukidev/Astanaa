@@ -96,7 +96,7 @@ function LocationColumn({
   }, [items, searchTerm]);
 
   return (
-    <div className="flex w-56 shrink-0 flex-col border border-gray-200">
+    <div className="flex w-72 max-w-full flex-col border border-gray-200">
       <div className="border-b border-gray-200 bg-green-50 px-3 py-2 text-sm font-semibold text-gray-800">
         {title}
       </div>
@@ -145,52 +145,69 @@ function LocationColumn({
 }
 
 /**
- * Narrowing location picker rendered as cascading columns (Division | District |
- * Upazila/Thana | Para/Mohalla | ...), mirroring the drill-down UX of
- * dlrms.land.gov.bd's khatian lookup. Backed entirely by the admin-managed
- * location tree (lib/location-nodes.ts) — an admin can nest as many extra
- * levels as they want under Area (Road, Goli, ...), and a matching extra
- * column shows up here automatically.
+ * Narrowing location picker that drills down one level at a time (Division ->
+ * District -> Upazila/Thana -> Para/Mohalla -> ...), mirroring the drill-down UX
+ * of dlrms.land.gov.bd's khatian lookup. Only the level currently being picked
+ * is shown, sized to its own content, instead of stacking every level's column
+ * side by side. Backed entirely by the admin-managed location tree
+ * (lib/location-nodes.ts) — an admin can nest as many extra levels as they want
+ * under Area (Road, Goli, ...), and a matching extra step shows up here
+ * automatically.
  */
 export default function LocationCascadeSelect({ value, onChange }: LocationCascadeSelectProps) {
   const { language } = useLanguage();
   const [nodes, setNodes] = useState<LocationNode[]>([]);
+  // Depth the user is actively revisiting (via a breadcrumb click). Null means
+  // "show the next level right after the deepest current selection".
+  const [reselectDepth, setReselectDepth] = useState<number | null>(null);
 
   useEffect(() => subscribeToLocationNodes(setNodes), []);
 
   const selectedPath = useMemo(() => resolvePath(nodes, valueToNames(value)), [nodes, value]);
+  const names = valueToNames(value);
 
-  function handleSelectAt(depth: number, en: string) {
-    const names = selectedPath.slice(0, depth).map((node) => node.en);
-    names.push(en);
-    onChange(namesToValue(names));
+  const depth = Math.min(reselectDepth ?? selectedPath.length, selectedPath.length);
+  const parentId = depth === 0 ? null : selectedPath[depth - 1]?.id ?? null;
+  const items = childrenOf(nodes, parentId);
+
+  function handleSelectAt(atDepth: number, en: string) {
+    const newNames = selectedPath.slice(0, atDepth).map((node) => node.en);
+    newNames.push(en);
+    onChange(namesToValue(newNames));
+    setReselectDepth(null); // reveal the next level once this one is picked
   }
-
-  // One column per selected depth, plus one more to reveal that selection's children.
-  const columnCount = selectedPath.length + 1;
 
   return (
     <div className="space-y-2">
       <Label>{`${LABELS.division[language]} / ${LABELS.district[language]} / ${LABELS.upazila[language]} / ${LABELS.area[language]}`}</Label>
 
-      <div className="flex gap-0 overflow-x-auto rounded-md border border-gray-200 divide-x divide-gray-200">
-        {Array.from({ length: columnCount }).map((_, depth) => {
-          const parentId = depth === 0 ? null : selectedPath[depth - 1]?.id ?? null;
-          const items = childrenOf(nodes, parentId);
-          const selectedEn = valueToNames(value)[depth] ?? "";
+      {selectedPath.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 text-sm">
+          {selectedPath.map((node, i) => (
+            <span key={node.id} className="flex items-center gap-1">
+              {i > 0 && <span className="text-gray-300">/</span>}
+              <button
+                type="button"
+                onClick={() => setReselectDepth(i)}
+                className={`rounded px-2 py-0.5 transition ${
+                  depth === i ? "bg-green-600 text-white" : "bg-green-50 text-green-800 hover:bg-green-100"
+                }`}
+              >
+                {language === "bn" ? node.bn : node.en}
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
-          return (
-            <LocationColumn
-              key={depth}
-              title={columnLabel(depth)[language]}
-              items={items}
-              selectedEn={selectedEn}
-              onSelect={(en) => handleSelectAt(depth, en)}
-              language={language}
-            />
-          );
-        })}
-      </div>
+      <LocationColumn
+        key={depth}
+        title={columnLabel(depth)[language]}
+        items={items}
+        selectedEn={names[depth] ?? ""}
+        onSelect={(en) => handleSelectAt(depth, en)}
+        language={language}
+      />
     </div>
   );
 }

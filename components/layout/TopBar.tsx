@@ -545,7 +545,7 @@ export default function TopBar() {
             )}
 
             {isLocationSearchOpen && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-[40rem] max-w-[90vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+              <div className="absolute left-0 top-full z-50 mt-2 w-fit max-w-[90vw] rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
                 <LocationSearchPicker onSelect={handleLocationSelect} />
               </div>
             )}
