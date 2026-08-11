@@ -431,6 +431,11 @@ export default function TopBar() {
     null
   );
   const browseDropdownRef = useRef<HTMLDivElement>(null);
+  // Desktop Browse dropdown stays mounted (just CSS-hidden) below the `lg`
+  // breakpoint, so it can't double as the mobile menu's outside-click
+  // boundary — the mobile Browse block needs its own ref, same reasoning as
+  // the two notification refs below.
+  const mobileBrowseDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
   const locationSearchDropdownRef = useRef<HTMLDivElement>(null);
   // Two refs because the desktop and mobile bell each render their own trigger
@@ -458,20 +463,20 @@ export default function TopBar() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (browseDropdownRef.current && !browseDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      const isInsideBrowse =
+        browseDropdownRef.current?.contains(target) || mobileBrowseDropdownRef.current?.contains(target);
+      if (!isInsideBrowse) {
         setIsBrowseOpen(false);
         setExpandedGroup(null);
       }
-      if (accountDropdownRef.current && !accountDropdownRef.current.contains(event.target as Node)) {
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(target)) {
         setIsAccountOpen(false);
       }
-      if (
-        locationSearchDropdownRef.current &&
-        !locationSearchDropdownRef.current.contains(event.target as Node)
-      ) {
+      if (locationSearchDropdownRef.current && !locationSearchDropdownRef.current.contains(target)) {
         setIsLocationSearchOpen(false);
       }
-      const target = event.target as Node;
       const isInsideNotifications =
         notificationsDropdownRef.current?.contains(target) ||
         mobileNotificationsDropdownRef.current?.contains(target);
@@ -787,7 +792,7 @@ export default function TopBar() {
 
         {isMenuOpen && (
           <div className="lg:hidden mt-3 space-y-2">
-            <div>
+            <div ref={mobileBrowseDropdownRef}>
               <button
                 onClick={() => setIsBrowseOpen(!isBrowseOpen)}
                 className="w-full flex items-center justify-between gap-2 border border-white/25 hover:bg-white/10 px-4 py-2 rounded text-sm font-semibold text-white transition"
