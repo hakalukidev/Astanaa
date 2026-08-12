@@ -25,7 +25,7 @@ export type ListingPurpose = string;
 export type ListingStatus = "active" | "sold" | "pending" | "rejected";
 
 export type BoostStatus = "none" | "pending" | "active" | "expired";
-export type BoostPaymentMethod = "bkash" | "nagad" | "card";
+export type BoostPaymentMethod = "bkash" | "nagad" | "rocket" | "card";
 
 export type ListingBoost = {
   status: BoostStatus;

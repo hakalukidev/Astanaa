@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Zap } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,11 @@ import { useToast } from "@/hooks/use-toast";
 import { requestListingBoost } from "@/lib/listing-service";
 import type { BoostPaymentMethod } from "@/lib/listings";
 
-const PAYMENT_METHODS: { value: BoostPaymentMethod; label: string }[] = [
-  { value: "bkash", label: "bKash" },
-  { value: "nagad", label: "Nagad" },
-  { value: "card", label: "Debit/Credit Card" },
+const PAYMENT_METHODS: { value: BoostPaymentMethod; label: string; logo: string }[] = [
+  { value: "bkash", label: "bKash", logo: "/payment-logos/bkash.svg" },
+  { value: "nagad", label: "Nagad", logo: "/payment-logos/nagad.svg" },
+  { value: "rocket", label: "Rocket", logo: "/payment-logos/rocket.svg" },
+  { value: "card", label: "Debit/Credit Card", logo: "/payment-logos/card.svg" },
 ];
 
 type BoostListingDialogProps = {
@@ -81,19 +83,26 @@ export default function BoostListingDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Payment method</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {PAYMENT_METHODS.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setMethod(option.value)}
-                  className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 transition ${
                     method === option.value
-                      ? "border-green-600 bg-green-50 text-green-700"
-                      : "border-gray-300 text-gray-600 hover:border-green-400"
+                      ? "border-green-600 bg-green-50"
+                      : "border-gray-300 hover:border-green-400"
                   }`}
                 >
-                  {option.label}
+                  <Image src={option.logo} alt={option.label} width={80} height={27} className="h-[27px] w-auto" unoptimized />
+                  <span
+                    className={`text-xs font-medium ${
+                      method === option.value ? "text-green-700" : "text-gray-600"
+                    }`}
+                  >
+                    {option.label}
+                  </span>
                 </button>
               ))}
             </div>
