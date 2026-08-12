@@ -59,7 +59,6 @@ export default function PostAdPage() {
   const [mapLink, setMapLink] = useState("");
   const [sellerPhone, setSellerPhone] = useState("");
   const [sellerWhatsapp, setSellerWhatsapp] = useState("");
-  const [sellerEmail, setSellerEmail] = useState("");
 
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -156,7 +155,7 @@ export default function PostAdPage() {
         sellerName: profile?.name || user.displayName || "Astanaa user",
         sellerPhone,
         sellerWhatsapp,
-        sellerEmail: sellerEmail.trim(),
+        sellerEmail: "",
         sellerRole: adminRole === "promoter" ? "promoter" : "client",
         title: title.trim(),
         description: description.trim(),
@@ -301,7 +300,7 @@ export default function PostAdPage() {
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
-                  <LocationCascadeSelect value={location} onChange={setLocation} />
+                  <LocationCascadeSelect value={location} onChange={setLocation} enableFlatSearch />
                 </div>
 
                 <div className="space-y-2">
@@ -357,17 +356,6 @@ export default function PostAdPage() {
                     value={sellerWhatsapp}
                     onChange={(event) => setSellerWhatsapp(event.target.value)}
                     placeholder="01XXXXXXXXX"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sellerEmail">{t.email}</Label>
-                  <Input
-                    id="sellerEmail"
-                    type="email"
-                    value={sellerEmail}
-                    onChange={(event) => setSellerEmail(event.target.value)}
-                    placeholder="you@example.com"
                   />
                 </div>
 
