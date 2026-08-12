@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import LocationCascadeSelect, {
   type LocationCascadeValue,
 } from "@/components/listings/LocationCascadeSelect";
+import PurposeCategoryPicker from "@/components/listings/PurposeCategoryPicker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ export default function PostAdPage() {
   const [bathrooms, setBathrooms] = useState("");
   const [areaSqft, setAreaSqft] = useState("");
   const [description, setDescription] = useState("");
+  const [mapLink, setMapLink] = useState("");
   const [sellerPhone, setSellerPhone] = useState("");
   const [sellerWhatsapp, setSellerWhatsapp] = useState("");
   const [sellerEmail, setSellerEmail] = useState("");
@@ -168,6 +170,7 @@ export default function PostAdPage() {
         locationUpazila: location.locationUpazila,
         locationArea: location.locationArea.trim(),
         locationExtra: location.locationExtra,
+        locationMapUrl: mapLink.trim(),
         bedrooms: bedrooms ? Number(bedrooms) : null,
         bathrooms: bathrooms ? Number(bathrooms) : null,
         areaSqft: areaSqft ? Number(areaSqft) : null,
@@ -260,34 +263,18 @@ export default function PostAdPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="purpose">{t.purpose}</Label>
-                  <select
-                    id="purpose"
-                    value={purpose}
-                    onChange={(event) => setPurpose(event.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {purposes.map((item) => (
-                      <option key={item.id} value={item.key}>
-                        {language === "bn" ? item.bn : item.en}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="propertyType">{t.propertyType}</Label>
-                  <select
-                    id="propertyType"
-                    value={propertyType}
-                    onChange={(event) => setPropertyType(event.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {(categoriesByPurpose[purpose] ?? []).map((category) => (
-                      <option key={category.id} value={category.en}>
-                        {language === "bn" ? category.bn : category.en}
-                      </option>
-                    ))}
-                  </select>
+                  <PurposeCategoryPicker
+                    purposes={purposes}
+                    categoriesByPurpose={categoriesByPurpose}
+                    purpose={purpose}
+                    propertyType={propertyType}
+                    language={language}
+                    placeholder={t.propertyType}
+                    onChange={(nextPurpose, nextPropertyType) => {
+                      setPurpose(nextPurpose as ListingPurpose);
+                      setPropertyType(nextPropertyType);
+                    }}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -394,6 +381,18 @@ export default function PostAdPage() {
                     rows={5}
                     required
                   />
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="mapLink">{t.mapLink}</Label>
+                  <Input
+                    id="mapLink"
+                    type="url"
+                    value={mapLink}
+                    onChange={(event) => setMapLink(event.target.value)}
+                    placeholder={t.mapLinkPlaceholder}
+                  />
+                  <p className="text-xs text-gray-500">{t.mapLinkHelp}</p>
                 </div>
               </div>
 

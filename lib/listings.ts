@@ -56,6 +56,11 @@ export type Listing = {
   locationArea: string;
   /** Anything an admin nested deeper than Area in the location tree (e.g. Road, Goli). */
   locationExtra: string[];
+  /** Google Maps link the seller pasted pointing at the exact house/building
+   * (Share -> Copy link from the Maps app, or the address bar URL). Optional —
+   * empty string when not provided. See lib/map-link.ts for how it's turned
+   * into an embeddable map on the listing detail page. */
+  locationMapUrl: string;
   bedrooms: number | null;
   bathrooms: number | null;
   areaSqft: number | null;
@@ -152,6 +157,7 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
       typeof data.locationUpazila === "string" ? data.locationUpazila : "",
     locationArea: typeof data.locationArea === "string" ? data.locationArea : "",
     locationExtra: toStringArray(data.locationExtra),
+    locationMapUrl: typeof data.locationMapUrl === "string" ? data.locationMapUrl : "",
     bedrooms: toNullableNumber(data.bedrooms),
     bathrooms: toNullableNumber(data.bathrooms),
     areaSqft: toNullableNumber(data.areaSqft),

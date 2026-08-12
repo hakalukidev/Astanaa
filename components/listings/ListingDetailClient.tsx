@@ -2,6 +2,7 @@
 
 import {
   BedDouble,
+  ExternalLink,
   Handshake,
   Loader2,
   Mail,
@@ -31,6 +32,7 @@ import {
   getPrimaryListingPhotoUrl,
   type Listing,
 } from "@/lib/listings";
+import { buildGoogleMapsEmbedSrc } from "@/lib/map-link";
 import { translations } from "@/lib/site-translations";
 
 type ListingDetailClientProps = {
@@ -57,6 +59,15 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   useEffect(() => subscribeToListingPurposes(setPurposes), []);
 
   const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
+
+  // Prefer the seller's pinned Google Maps link (exact building) over a
+  // guessed embed built from the free-text location — falls back to that
+  // guess when no link was pasted, and to nothing if neither is set.
+  const mapEmbedSrc = listing.locationMapUrl
+    ? buildGoogleMapsEmbedSrc(listing.locationMapUrl)
+    : listing.location
+      ? `https://www.google.com/maps?q=${encodeURIComponent(listing.location)}&output=embed`
+      : null;
 
   const photos = listing.photoUrls.length > 0 ? listing.photoUrls : [getPrimaryListingPhotoUrl(listing)];
   const isOwner = user?.uid === listing.sellerId;
@@ -191,19 +202,31 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
               </p>
             </div>
 
-            {listing.location ? (
+            {mapEmbedSrc || listing.locationMapUrl || listing.location ? (
               <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
                 <h2 className="text-lg font-semibold text-gray-900">{t.mapTitle}</h2>
-                <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg border border-gray-100">
-                  <iframe
-                    key={listing.location}
-                    src={`https://www.google.com/maps?q=${encodeURIComponent(listing.location)}&output=embed`}
-                    className="h-full w-full border-0"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={listing.location}
-                  />
-                </div>
+                {mapEmbedSrc ? (
+                  <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg border border-gray-100">
+                    <iframe
+                      key={mapEmbedSrc}
+                      src={mapEmbedSrc}
+                      className="h-full w-full border-0"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title={listing.location || listing.title}
+                    />
+                  </div>
+                ) : null}
+                {listing.locationMapUrl ? (
+                  <a
+                    href={listing.locationMapUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:underline"
+                  >
+                    <ExternalLink size={14} className="shrink-0" /> {t.viewOnGoogleMaps}
+                  </a>
+                ) : null}
               </div>
             ) : null}
           </div>
