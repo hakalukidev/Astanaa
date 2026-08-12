@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2, UserPlus } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -30,15 +30,18 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [termsContent, setTermsContent] = useState("");
   const [isTermsLoading, setIsTermsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Signup-verification OTP: user picks a channel, we send a code there, and
-  // the "Create account" button stays locked until it's verified.
-  const [channel, setChannel] = useState<OtpChannel>("email");
+  // Signup-verification OTP: the channel is picked automatically (phone if
+  // the user gave one, otherwise email) instead of asking again — and the
+  // "Create account" button stays locked until that code is verified.
   const [captchaPayload, setCaptchaPayload] = useState<CaptchaPayload | null>(null);
   const [otpStage, setOtpStage] = useState<OtpStage>("idle");
   const [otpCode, setOtpCode] = useState("");
@@ -47,6 +50,7 @@ export default function SignUpPage() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
+  const channel: OtpChannel = phone.trim() ? "phone" : "email";
   const contactValue = channel === "email" ? email : phone;
 
   useEffect(() => {
@@ -62,9 +66,14 @@ export default function SignUpPage() {
     setOtpError("");
   }
 
-  function handleChannelChange(next: OtpChannel) {
-    setChannel(next);
-    resetOtpState();
+  function handlePhoneChange(value: string) {
+    setPhone(value);
+    if (otpStage !== "idle") resetOtpState();
+  }
+
+  function handleEmailChange(value: string) {
+    setEmail(value);
+    if (otpStage !== "idle") resetOtpState();
   }
 
   async function handleSendCode() {
@@ -130,6 +139,11 @@ export default function SignUpPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (password !== confirmPassword) {
+      setErrorMessage(t.passwordMismatch);
+      return;
+    }
+
     if (!agreedToTerms) {
       setErrorMessage(t.termsRequiredError);
       return;
@@ -190,15 +204,14 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">{t.phone}</Label>
+              <Label htmlFor="phone">{t.phoneOptional}</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => handlePhoneChange(event.target.value)}
                 placeholder="01XXXXXXXXX"
                 disabled={otpStage === "verified" && channel === "phone"}
-                required
               />
             </div>
             <div className="space-y-2">
@@ -207,7 +220,7 @@ export default function SignUpPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => handleEmailChange(event.target.value)}
                 placeholder="you@example.com"
                 disabled={otpStage === "verified" && channel === "email"}
                 required
@@ -215,42 +228,52 @@ export default function SignUpPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t.password}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={t.passwordPlaceholder}
-                minLength={6}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={t.passwordPlaceholder}
+                  minLength={6}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? t.hidePassword : t.showPassword}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">{t.confirmPassword}</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder={t.confirmPasswordPlaceholder}
+                  minLength={6}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label={showConfirmPassword ? t.hidePassword : t.showPassword}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3 rounded-md border border-gray-200 p-3">
-              <Label>{t.verifyVia}</Label>
-              <div className="flex gap-4 text-sm text-gray-700">
-                <label className="flex items-center gap-1.5">
-                  <input
-                    type="radio"
-                    name="otp-channel"
-                    checked={channel === "email"}
-                    onChange={() => handleChannelChange("email")}
-                    disabled={otpStage === "verified"}
-                  />
-                  {t.verifyEmail}
-                </label>
-                <label className="flex items-center gap-1.5">
-                  <input
-                    type="radio"
-                    name="otp-channel"
-                    checked={channel === "phone"}
-                    onChange={() => handleChannelChange("phone")}
-                    disabled={otpStage === "verified"}
-                  />
-                  {t.verifyPhone}
-                </label>
-              </div>
-
               {otpStage === "verified" ? (
                 <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-green-600">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
