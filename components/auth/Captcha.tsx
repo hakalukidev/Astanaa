@@ -1,86 +1,116 @@
 "use client";
 
-import { Loader2, RotateCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export type CaptchaPayload = {
-  code: string;
-  expiresAt: number;
-  signature: string;
-  answer: string;
+/** The token string a solved Turnstile challenge hands back — sent to the
+ * server as-is; lib/captcha.ts checks it with Cloudflare on submit. */
+export type CaptchaPayload = string;
+
+// Cloudflare's published "always passes" test site key — used only when
+// NEXT_PUBLIC_TURNSTILE_SITE_KEY isn't set, so local dev renders a working
+// widget without a real Turnstile site registered in Cloudflare's
+// dashboard. Pairs with the matching test secret key in lib/captcha.ts.
+const DEV_FALLBACK_SITE_KEY = "1x00000000000000000000AA";
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || DEV_FALLBACK_SITE_KEY;
+
+const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  "expired-callback"?: () => void;
+  "error-callback"?: () => void;
 };
 
-type Challenge = { code: string; expiresAt: number; signature: string };
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+      remove: (widgetId: string) => void;
+    };
+    onloadTurnstileCallback?: () => void;
+  }
+}
+
+// Loaded once and shared across every <Captcha> on the page (e.g. if a form
+// somehow mounts more than one), instead of injecting the script tag again.
+let scriptLoadPromise: Promise<void> | null = null;
+
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+
+  if (!scriptLoadPromise) {
+    scriptLoadPromise = new Promise((resolve) => {
+      window.onloadTurnstileCallback = () => resolve();
+      const script = document.createElement("script");
+      script.src = `${SCRIPT_SRC}?onload=onloadTurnstileCallback&render=explicit`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    });
+  }
+
+  return scriptLoadPromise;
+}
 
 /**
- * Text captcha: fetches a random code from /api/auth/captcha and reports the
- * full {code, expiresAt, signature, answer} payload back to the parent via
- * onChange, so the parent can attach it to whatever request it's guarding.
- * Pass a stable setState function as `onChange` to avoid re-fetch loops.
+ * Cloudflare Turnstile widget: proves the visitor isn't a bot (usually just
+ * a quiet "Success!" check, occasionally a small challenge) without a code
+ * to type. Reports the resulting one-time token back to the parent via
+ * onChange so it can attach it to whatever request it's guarding — null
+ * whenever there isn't currently a valid token (not yet solved, expired, or
+ * errored). Pass a stable setState function as `onChange` to avoid
+ * re-render loops.
  */
 export function Captcha({
   label,
   onChange,
 }: {
   label: string;
-  onChange: (payload: CaptchaPayload | null) => void;
+  onChange: (token: string | null) => void;
 }) {
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [answer, setAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const id = useId();
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setAnswer("");
-    setChallenge(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const response = await fetch("/api/auth/captcha");
-      const data = (await response.json()) as Challenge;
-      setChallenge(data);
-    } catch {
-      setChallenge(null);
-    } finally {
-      setLoading(false);
-    }
+    loadTurnstileScript().then(() => {
+      if (cancelled || !containerRef.current || !window.turnstile) {
+        return;
+      }
+
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: SITE_KEY,
+        callback: (token) => onChange(token),
+        "expired-callback": () => onChange(null),
+        "error-callback": () => onChange(null),
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+      }
+      onChange(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    onChange(challenge && answer ? { ...challenge, answer } : null);
-  }, [challenge, answer, onChange]);
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="captcha">{label}</Label>
-      <div className="flex items-center gap-2">
-        <div className="flex h-10 min-w-[104px] select-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 px-3 font-mono text-lg font-bold tracking-[0.3em] text-gray-700">
-          {loading || !challenge ? <Loader2 className="h-4 w-4 animate-spin" /> : challenge.code}
-        </div>
-        <button
-          type="button"
-          onClick={refresh}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-500 transition hover:bg-gray-50"
-          aria-label="Refresh captcha"
-        >
-          <RotateCw className="h-4 w-4" />
-        </button>
-        <Input
-          id="captcha"
-          value={answer}
-          onChange={(event) => setAnswer(event.target.value)}
-          placeholder="Type the code above"
-          className="flex-1"
-          autoComplete="off"
-          required
-        />
-      </div>
+      <Label htmlFor={id}>{label}</Label>
+      <div id={id} ref={containerRef} />
     </div>
   );
 }

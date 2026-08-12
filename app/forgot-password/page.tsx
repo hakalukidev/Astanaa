@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>("request");
   const [channel, setChannel] = useState<OtpChannel>("email");
   const [identifier, setIdentifier] = useState("");
-  const [captchaPayload, setCaptchaPayload] = useState<CaptchaPayload | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<CaptchaPayload | null>(null);
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setErrorMessage("");
 
-    if (!identifier.trim() || !captchaPayload) {
+    if (!identifier.trim() || !captchaToken) {
       setErrorMessage(t.genericError);
       return;
     }
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
       const response = await fetch("/api/auth/forgot-password/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, channel, captcha: captchaPayload }),
+        body: JSON.stringify({ identifier, channel, captchaToken }),
       });
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
 
@@ -147,7 +147,7 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              <Captcha label={t.captchaLabel} onChange={setCaptchaPayload} />
+              <Captcha label={t.captchaLabel} onChange={setCaptchaToken} />
 
               {errorMessage ? (
                 <p className="text-sm font-medium text-red-600">{errorMessage}</p>

@@ -42,7 +42,7 @@ export default function SignUpPage() {
   // Signup-verification OTP: the channel is picked automatically (phone if
   // the user gave one, otherwise email) instead of asking again — and the
   // "Create account" button stays locked until that code is verified.
-  const [captchaPayload, setCaptchaPayload] = useState<CaptchaPayload | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<CaptchaPayload | null>(null);
   const [otpStage, setOtpStage] = useState<OtpStage>("idle");
   const [otpCode, setOtpCode] = useState("");
   const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function SignUpPage() {
   async function handleSendCode() {
     setOtpError("");
 
-    if (!contactValue.trim() || !captchaPayload) {
+    if (!contactValue.trim() || !captchaToken) {
       setOtpError(t.otpSendError);
       return;
     }
@@ -90,7 +90,7 @@ export default function SignUpPage() {
       const response = await fetch("/api/auth/otp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: contactValue, channel, captcha: captchaPayload }),
+        body: JSON.stringify({ identifier: contactValue, channel, captchaToken }),
       });
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
 
@@ -288,7 +288,7 @@ export default function SignUpPage() {
                 </p>
               ) : (
                 <>
-                  <Captcha label={t.captchaLabel} onChange={setCaptchaPayload} />
+                  <Captcha label={t.captchaLabel} onChange={setCaptchaToken} />
 
                   {otpStage === "idle" ? (
                     <Button

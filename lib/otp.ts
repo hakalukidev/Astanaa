@@ -2,7 +2,6 @@ import "server-only";
 
 import { createHash, createHmac, randomInt } from "crypto";
 
-import { getSigningSecret } from "@/lib/captcha";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { otpEmailHtml, sendEmail } from "@/lib/mailer";
 import { normalizeBdPhone, sendSms, toGatewayFormat } from "@/lib/sms";
@@ -14,6 +13,24 @@ const OTP_COLLECTION = "otps";
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between sends
+
+function getSigningSecret() {
+  const secret = process.env.OTP_SIGNING_SECRET?.trim();
+
+  if (secret) {
+    return secret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("OTP_SIGNING_SECRET is not set. Add it to your environment before going live.");
+  }
+
+  console.warn(
+    "[otp] OTP_SIGNING_SECRET is not set — using an insecure dev-only fallback. Set it in .env.local."
+  );
+
+  return "dev-only-insecure-fallback-secret";
+}
 
 /** Normalizes a raw email/phone into the identifier we key OTP docs and lookups by. */
 export function normalizeIdentifier(channel: OtpChannel, raw: string): string | null {

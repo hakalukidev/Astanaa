@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     | {
         identifier?: string;
         channel?: OtpChannel;
-        captcha?: { code?: string; expiresAt?: number; signature?: string; answer?: string };
+        captchaToken?: string;
       }
     | null;
 
@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Choose email or phone." }, { status: 400 });
   }
 
-  const captchaResult = verifyCaptcha(payload?.captcha ?? {});
+  const captchaResult = await verifyCaptcha(
+    payload?.captchaToken,
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+  );
 
   if (!captchaResult.ok) {
     return NextResponse.json({ error: captchaResult.error }, { status: 400 });
