@@ -12,6 +12,11 @@ import {
   getPrimaryListingPhotoUrl,
   type Listing,
 } from "@/lib/listings";
+import {
+  getPropertyTypeLabel,
+  subscribeToPropertyTypeCategories,
+  type PropertyTypeCategory,
+} from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
 
 type ListingCardProps = {
@@ -24,10 +29,13 @@ export default function ListingCard({ listing }: ListingCardProps) {
   const photoUrl = getPrimaryListingPhotoUrl(listing);
   const isBoosted = listing.boost.status === "active";
   const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+  const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
 
   useEffect(() => subscribeToListingPurposes(setPurposes), []);
+  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
 
   const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
+  const propertyTypeLabel = getPropertyTypeLabel(propertyTypeCategories, listing.propertyType, language);
 
   return (
     <Link
@@ -54,9 +62,14 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </span>
         ) : null}
 
-        <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
-          {purposeLabel}
-        </span>
+        <div className="absolute right-2 top-2 flex max-w-[70%] flex-col items-end gap-1">
+          <span className="max-w-full truncate rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
+            {purposeLabel}
+          </span>
+          <span className="max-w-full truncate rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
+            {propertyTypeLabel}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3 text-left">

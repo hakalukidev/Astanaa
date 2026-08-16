@@ -150,6 +150,27 @@ export function groupCategoriesByPurpose(
   return grouped;
 }
 
+/** Resolves a listing's `propertyType` (stored as the category's English
+ * label, e.g. "Flat Rent") to its display label, with the same fallback
+ * chain as getListingPurposeLabel(): the live categories list, then the
+ * built-in defaults (covers the moment before the list has loaded), then
+ * the raw value itself so nothing ever renders blank. */
+export function getPropertyTypeLabel(
+  categories: PropertyTypeCategory[],
+  propertyType: string,
+  language: "en" | "bn"
+): string {
+  const match = categories.find((item) => item.en === propertyType);
+  if (match) {
+    return language === "bn" ? match.bn : match.en;
+  }
+  const fallback = DEFAULT_PROPERTY_TYPE_CATEGORIES.find((item) => item.en === propertyType);
+  if (fallback) {
+    return language === "bn" ? fallback.bn : fallback.en;
+  }
+  return propertyType;
+}
+
 /** Staff-admin only (enforced by firestore.rules). */
 export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) {
   if (!db) {

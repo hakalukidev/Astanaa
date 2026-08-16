@@ -572,7 +572,7 @@ export default function TopBar() {
         <div className="hidden lg:flex items-center justify-center gap-6">
           <Link href="/" className="flex items-center shrink-0">
             <Image src="/logo.svg" alt="Astanaa.com" width={52} height={28} className="object-contain" unoptimized priority />
-            <span className="ml-2 text-base font-bold text-white leading-tight">ASTANAA.COM</span>
+            <span className="ml-2 text-base font-bold text-white leading-tight">astanaa.com</span>
           </Link>
 
           <div className="relative" ref={browseDropdownRef}>
@@ -725,7 +725,7 @@ export default function TopBar() {
         <div className="flex lg:hidden items-center justify-between">
           <Link href="/" className="flex items-center shrink-0">
             <Image src="/logo.svg" alt="Astanaa.com" width={42} height={24} className="object-contain" unoptimized priority />
-            <span className="ml-1 text-sm font-bold text-white leading-tight">ASTANAA.COM</span>
+            <span className="ml-1 text-sm font-bold text-white leading-tight">astanaa.com</span>
           </Link>
 
           <div className="flex items-center gap-1">
