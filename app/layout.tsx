@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     // Versioned query string so browsers don't keep serving the old
     // favicon from their (very sticky) favicon cache. Bump this string
     // any time /public/icon.png changes.
-    icon: '/icon.png?v=astanaa-2',
+    icon: '/icon.png?v=astanaa-3',
   },
 }
 

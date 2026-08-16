@@ -26,6 +26,7 @@ import { createBuyRequest } from "@/lib/buy-requests";
 import { getOrCreateChat } from "@/lib/chat";
 import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { deleteListing } from "@/lib/listing-service";
+import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
 import {
   formatListingPostedAt,
   formatListingPrice,
@@ -149,6 +150,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
 
     try {
       await deleteListing(listing.id);
+      await revalidateListingsCache().catch(() => {});
       toast({ title: t.listingDeletedTitle });
       router.replace("/my-listings");
     } catch {

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { type AdminRole } from "@/lib/admin-auth";
 import { deleteListing, markListingStatus, subscribeToAllListingsForAdmin } from "@/lib/listing-service";
+import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
 import {
   formatDurationMs,
   formatListingPrice,
@@ -96,6 +97,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
     setPendingId(listing.id);
     try {
       await markListingStatus(listing, "active", { uid: adminUid, name: adminName });
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing approved", description: listing.title });
     } catch {
       toast({ title: "Could not approve listing", variant: "destructive" });
@@ -108,6 +110,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
     setPendingId(listing.id);
     try {
       await markListingStatus(listing, "rejected", { uid: adminUid, name: adminName });
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing rejected", description: listing.title });
     } catch {
       toast({ title: "Could not reject listing", variant: "destructive" });
@@ -124,6 +127,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
     setPendingId(listing.id);
     try {
       await deleteListing(listing.id);
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing removed" });
     } catch {
       toast({ title: "Could not remove listing", variant: "destructive" });

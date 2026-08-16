@@ -15,6 +15,7 @@ import {
   type Listing,
   type ListingStatus,
 } from "@/lib/listings";
+import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
 import { cn } from "@/lib/utils";
 
 const TABS: { value: ListingStatus; label: string }[] = [
@@ -49,6 +50,7 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
     setPendingId(listing.id);
     try {
       await markListingStatus(listing, "active", { uid: adminUid, name: adminName });
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing approved", description: listing.title });
     } catch {
       toast({ title: "Could not approve listing", variant: "destructive" });
@@ -61,6 +63,7 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
     setPendingId(listing.id);
     try {
       await markListingStatus(listing, "rejected", { uid: adminUid, name: adminName });
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing rejected", description: listing.title });
     } catch {
       toast({ title: "Could not reject listing", variant: "destructive" });
@@ -77,6 +80,7 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
     setPendingId(listing.id);
     try {
       await deleteListing(listing.id);
+      await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing removed" });
     } catch {
       toast({ title: "Could not remove listing", variant: "destructive" });

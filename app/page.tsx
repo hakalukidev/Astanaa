@@ -1,9 +1,9 @@
 import HeroSlider from "@/components/home/HeroSlider";
 import LatestListings from "@/components/home/LatestListings";
-import { getAllListings } from "@/lib/listing-service";
+import { getCachedListings } from "@/lib/listing-cache";
 
 export default async function HomePage() {
-  const listings = await getAllListings();
+  const listings = await getCachedListings();
 
   return (
     <main className="bg-white">

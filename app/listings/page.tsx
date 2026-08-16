@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 
 import ListingsCatalogClient from "@/components/listings/ListingsCatalogClient";
-import { getAllListings } from "@/lib/listing-service";
+import { getCachedListings } from "@/lib/listing-cache";
 
 export default async function ListingsPage() {
-  const initialListings = await getAllListings();
+  const initialListings = await getCachedListings();
 
   return (
     <Suspense fallback={<ListingsPageFallback />}>
