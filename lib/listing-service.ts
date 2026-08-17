@@ -17,9 +17,12 @@ import { db } from "@/lib/firebase";
 import {
   LISTINGS_COLLECTION,
   mapListingSnapshot,
+  mapModerationLogSnapshot,
+  MODERATION_LOG_COLLECTION,
   type BoostPaymentMethod,
   type Listing,
   type ListingInput,
+  type ModerationLogEntry,
 } from "@/lib/listings";
 import { createListingStatusNotification } from "@/lib/notifications";
 
@@ -188,12 +191,60 @@ export async function updateListing(id: string, input: Partial<ListingInput>) {
   });
 }
 
-export async function deleteListing(id: string) {
+/**
+ * Permanently deletes a listing. When called with `moderator` (removal from
+ * the moderation queue or admin posts page, as opposed to the owner deleting
+ * their own listing), it also writes a moderationLog entry first — the
+ * listing doc is about to disappear, so that's the only place left to record
+ * who removed it and when. Powers the "removed" count on the Moderators
+ * admin report.
+ */
+export async function deleteListing(
+  listing: Pick<Listing, "id" | "sellerId" | "sellerName" | "title">,
+  moderator?: { uid: string; name: string }
+) {
   if (!db) {
     throw new Error("Listing data is not available.");
   }
 
-  return deleteDoc(doc(db, LISTINGS_COLLECTION, id));
+  await deleteDoc(doc(db, LISTINGS_COLLECTION, listing.id));
+
+  if (moderator) {
+    // Best-effort — a failed log write shouldn't undo the deletion, which
+    // already succeeded above.
+    await addDoc(collection(db, MODERATION_LOG_COLLECTION), {
+      listingId: listing.id,
+      listingTitle: listing.title,
+      sellerId: listing.sellerId,
+      sellerName: listing.sellerName,
+      moderatorUid: moderator.uid,
+      moderatorName: moderator.name,
+      createdAt: serverTimestamp(),
+    }).catch(() => {});
+  }
+}
+
+/** Used by the Moderators admin report — every removal a moderator logged, newest first. */
+export function subscribeToModerationLog(
+  onChange: (entries: ModerationLogEntry[]) => void
+) {
+  if (!db) {
+    onChange([]);
+    return () => {};
+  }
+
+  const logQuery = query(
+    collection(db, MODERATION_LOG_COLLECTION),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(logQuery, (snapshot) => {
+    onChange(
+      snapshot.docs
+        .map((docSnapshot) => mapModerationLogSnapshot(docSnapshot))
+        .filter((entry): entry is ModerationLogEntry => Boolean(entry))
+    );
+  });
 }
 
 /**

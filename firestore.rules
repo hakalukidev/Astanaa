@@ -143,6 +143,10 @@ service cloud.firestore {
     // self-approve (set status to "active") or self-reject, and can't
     // activate their own boost (that's staff-only, until payment is
     // verified).
+    //
+    // Moderators can only approve/reject (update) — permanently removing a
+    // listing is staff-only (super_admin/admin), same as the moderationLog
+    // write below. The listing owner can still delete their own listing.
     match /listings/{listingId} {
       allow read: if resource.data.status == 'active'
         || (isSignedIn() && resource.data.sellerId == request.auth.uid)
@@ -159,8 +163,21 @@ service cloud.firestore {
         && (request.resource.data.boost.status != 'active' || resource.data.boost.status == 'active')
       );
 
-      allow delete: if canModerateListings()
+      allow delete: if isStaffAdmin()
         || (isSignedIn() && resource.data.sellerId == request.auth.uid);
+    }
+
+    // --- moderationLog -------------------------------------------------------
+    // Append-only trail of listings a staff admin permanently removed
+    // (approvals and rejections stay on the listing doc itself via
+    // moderatedBy/moderatedAt, but a removal deletes that doc, so this is the
+    // only record left). Removal is staff-only (see the listings delete rule
+    // above) — moderators can only approve/reject. Written client-side by
+    // deleteListing() in lib/listing-service.ts. Powers the "removed" count
+    // on the Moderators admin report — staff-only read, same as siteVisits.
+    match /moderationLog/{logId} {
+      allow create: if isStaffAdmin();
+      allow read: if isStaffAdmin();
     }
 
     // --- buyRequests -------------------------------------------------------

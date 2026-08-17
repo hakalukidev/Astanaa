@@ -194,6 +194,45 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
   };
 }
 
+export const MODERATION_LOG_COLLECTION = "moderationLog";
+
+/**
+ * Records a moderator permanently removing a listing. Approvals/rejections
+ * don't need a log entry — they're already stamped on the listing doc
+ * (moderatedBy/moderatedByName/moderatedAt) and that doc keeps existing. A
+ * removal deletes the doc outright, so this is the only trace left of who
+ * removed what and when. Written by deleteListing() in lib/listing-service.ts.
+ */
+export type ModerationLogEntry = {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  sellerId: string;
+  sellerName: string;
+  moderatorUid: string;
+  moderatorName: string;
+  createdAtMs: number | null;
+};
+
+export function mapModerationLogSnapshot(snapshot: ListingSnapshot): ModerationLogEntry | null {
+  const data = snapshot.data();
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: snapshot.id,
+    listingId: typeof data.listingId === "string" ? data.listingId : "",
+    listingTitle: typeof data.listingTitle === "string" ? data.listingTitle : "",
+    sellerId: typeof data.sellerId === "string" ? data.sellerId : "",
+    sellerName: typeof data.sellerName === "string" ? data.sellerName : "",
+    moderatorUid: typeof data.moderatorUid === "string" ? data.moderatorUid : "",
+    moderatorName: typeof data.moderatorName === "string" ? data.moderatorName : "",
+    createdAtMs: getTimestampMs(data.createdAt),
+  };
+}
+
 /** Joins the cascading location parts (division, district, upazila/thana, para/mohalla, ...) into one display string, narrowest first. */
 export function formatListingLocation(parts: {
   locationDivision: string;

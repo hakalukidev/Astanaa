@@ -4,5 +4,5 @@ import { requireModerator } from "@/lib/admin-auth";
 export default async function AdminModerationRoute() {
   const admin = await requireModerator();
 
-  return <ModerationQueue adminUid={admin.uid} adminName={admin.email} />;
+  return <ModerationQueue role={admin.role} adminUid={admin.uid} adminName={admin.email} />;
 }

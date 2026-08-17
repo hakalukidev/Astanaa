@@ -149,7 +149,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
     setIsDeleting(true);
 
     try {
-      await deleteListing(listing.id);
+      await deleteListing(listing);
       await revalidateListingsCache().catch(() => {});
       toast({ title: t.listingDeletedTitle });
       router.replace("/my-listings");

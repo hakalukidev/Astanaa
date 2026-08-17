@@ -126,7 +126,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
 
     setPendingId(listing.id);
     try {
-      await deleteListing(listing.id);
+      await deleteListing(listing, { uid: adminUid, name: adminName });
       await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing removed" });
     } catch {

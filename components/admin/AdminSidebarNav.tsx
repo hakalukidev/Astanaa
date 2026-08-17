@@ -12,6 +12,8 @@ import {
   Megaphone,
   ShieldCheck,
   Tags,
+  UserCog,
+  UserRound,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,6 +32,16 @@ const catalogItems = [
     href: "/admin/reports",
     label: "Reports",
     icon: BarChart3,
+  },
+  {
+    href: "/admin/promoters",
+    label: "Promoters",
+    icon: UserRound,
+  },
+  {
+    href: "/admin/moderators",
+    label: "Moderators",
+    icon: UserCog,
   },
   {
     href: "/admin/site-users",

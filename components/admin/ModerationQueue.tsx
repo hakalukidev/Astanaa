@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { type AdminRole } from "@/lib/admin-auth";
 import { deleteListing, markListingStatus, subscribeToListingsByStatus } from "@/lib/listing-service";
 import {
   formatDurationMs,
@@ -24,12 +25,24 @@ const TABS: { value: ListingStatus; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
+// Duplicated (rather than imported) from lib/admin-auth.ts on purpose: that
+// module is marked "server-only", so a client component can't pull the real
+// function in — only its type. Keep this in sync with isStaffAdmin().
+//
+// Moderators can only approve/reject — permanently removing a listing is
+// staff-only (super_admin/admin), enforced here and in firestore.rules.
+function isStaffAdmin(role: AdminRole) {
+  return role === "super_admin" || role === "admin";
+}
+
 type ModerationQueueProps = {
+  role: AdminRole;
   adminUid: string;
   adminName: string;
 };
 
-export default function ModerationQueue({ adminUid, adminName }: ModerationQueueProps) {
+export default function ModerationQueue({ role, adminUid, adminName }: ModerationQueueProps) {
+  const canRemove = isStaffAdmin(role);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<ListingStatus>("pending");
   const [listings, setListings] = useState<Listing[]>([]);
@@ -79,7 +92,7 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
 
     setPendingId(listing.id);
     try {
-      await deleteListing(listing.id);
+      await deleteListing(listing, { uid: adminUid, name: adminName });
       await revalidateListingsCache().catch(() => {});
       toast({ title: "Listing removed" });
     } catch {
@@ -218,16 +231,18 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
                           >
                             <Check className="h-4 w-4" /> Approve
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
-                            onClick={() => handleRemove(listing)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canRemove ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => handleRemove(listing)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
                         </>
-                      ) : (
+                      ) : canRemove ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -235,6 +250,15 @@ export default function ModerationQueue({ adminUid, adminName }: ModerationQueue
                           onClick={() => handleRemove(listing)}
                         >
                           <Trash2 className="h-4 w-4" /> Remove
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => handleReject(listing)}
+                        >
+                          <X className="h-4 w-4" /> Reject
                         </Button>
                       )}
                     </div>
