@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { type AdminRole } from "@/lib/admin-auth";
 import { deleteListing, markListingStatus, subscribeToAllListingsForAdmin } from "@/lib/listing-service";
+import { buildPostSerialMap } from "@/lib/post-serial";
 import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
 import {
   formatDurationMs,
   formatListingPrice,
+  getListingThumbnailUrl,
   getPrimaryListingPhotoUrl,
   type Listing,
   type ListingStatus,
@@ -77,6 +79,8 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
       sold: listings.filter((listing) => listing.status === "sold").length,
     };
   }, [listings]);
+
+  const postSerialsById = useMemo(() => buildPostSerialMap(listings), [listings]);
 
   const filteredListings = useMemo(() => {
     const normalizedSearch = deferredSearchTerm.trim().toLowerCase();
@@ -230,12 +234,19 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
                     key={listing.id}
                     className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center"
                   >
+                    <div className="flex shrink-0 items-center justify-center self-stretch sm:w-16">
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-center font-mono text-[11px] font-semibold text-slate-500">
+                        {postSerialsById.get(listing.id)}
+                      </span>
+                    </div>
+
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                       {getPrimaryListingPhotoUrl(listing) ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={getPrimaryListingPhotoUrl(listing)}
+                          src={getListingThumbnailUrl(getPrimaryListingPhotoUrl(listing), 100)}
                           alt=""
+                          loading="lazy"
                           className="h-full w-full object-cover"
                         />
                       ) : null}

@@ -7,7 +7,12 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getListingsBySeller } from "@/lib/listing-service";
-import { formatListingPrice, getPrimaryListingPhotoUrl, type Listing } from "@/lib/listings";
+import {
+  formatListingPrice,
+  getListingThumbnailUrl,
+  getPrimaryListingPhotoUrl,
+  type Listing,
+} from "@/lib/listings";
 import { cn } from "@/lib/utils";
 
 type AdminMyPostsProps = {
@@ -71,8 +76,9 @@ export default function AdminMyPosts({ uid, name }: AdminMyPostsProps) {
                     {getPrimaryListingPhotoUrl(listing) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={getPrimaryListingPhotoUrl(listing)}
+                        src={getListingThumbnailUrl(getPrimaryListingPhotoUrl(listing), 100)}
                         alt=""
+                        loading="lazy"
                         className="h-full w-full object-cover"
                       />
                     ) : null}

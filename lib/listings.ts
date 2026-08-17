@@ -257,6 +257,32 @@ export function getPrimaryListingPhotoUrl(listing: Listing) {
   return listing.photoUrls[0] ?? "";
 }
 
+/**
+ * Cloudinary serves the exact upload resolution by default, which is
+ * massive overkill for a small admin-list thumbnail (photos are often
+ * multi-MB phone camera shots). Cloudinary supports resizing on the fly via
+ * URL segment, so this inserts one right after "/upload/" — no re-upload or
+ * stored-URL change needed. Falls back to the original URL untouched for
+ * anything that isn't a Cloudinary "/upload/" URL (e.g. empty string).
+ */
+export function getListingThumbnailUrl(url: string, size = 100) {
+  if (!url) {
+    return url;
+  }
+
+  const uploadMarker = "/upload/";
+  const markerIndex = url.indexOf(uploadMarker);
+
+  if (markerIndex === -1) {
+    return url;
+  }
+
+  const insertAt = markerIndex + uploadMarker.length;
+  const transform = `w_${size},h_${size},c_fill,q_auto,f_auto/`;
+
+  return url.slice(0, insertAt) + transform + url.slice(insertAt);
+}
+
 export function formatListingPrice(price: number) {
   if (!Number.isFinite(price) || price <= 0) {
     return "Price on call";

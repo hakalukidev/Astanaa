@@ -12,6 +12,7 @@ import { deleteListing, markListingStatus, subscribeToListingsByStatus } from "@
 import {
   formatDurationMs,
   formatListingPrice,
+  getListingThumbnailUrl,
   getPrimaryListingPhotoUrl,
   type Listing,
   type ListingStatus,
@@ -154,8 +155,9 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
                       {getPrimaryListingPhotoUrl(listing) ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={getPrimaryListingPhotoUrl(listing)}
+                          src={getListingThumbnailUrl(getPrimaryListingPhotoUrl(listing), 100)}
                           alt=""
+                          loading="lazy"
                           className="h-full w-full object-cover"
                         />
                       ) : null}
