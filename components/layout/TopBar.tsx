@@ -6,6 +6,7 @@ import {
   ChevronRight,
   LayoutGrid,
   LogOut,
+  MapPin,
   Menu,
   MessageCircle,
   Plus,
@@ -619,7 +620,7 @@ export default function TopBar() {
 
           <div className="relative w-72" ref={locationSearchDropdownRef}>
             <div className="relative flex w-full items-center">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 value={locationQuery}
@@ -762,7 +763,7 @@ export default function TopBar() {
         {isSearchOpen && (
           <div className="lg:hidden mt-3 space-y-2 rounded-lg border border-gray-200 bg-white p-3">
             <div className="relative flex w-full items-center">
-              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 value={locationQuery}
