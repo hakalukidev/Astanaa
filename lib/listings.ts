@@ -27,6 +27,13 @@ export type ListingStatus = "active" | "sold" | "pending" | "rejected";
 export type BoostStatus = "none" | "pending" | "active" | "expired";
 export type BoostPaymentMethod = "bkash" | "nagad" | "rocket" | "card";
 
+/**
+ * Fixed boost price shown throughout the app (post-ad/listing detail): ৳100
+ * per boosted post. There's no separate "payments" collection — a boost
+ * request on a listing *is* the payment record.
+ */
+export const BOOST_PRICE_BDT = 100;
+
 export type ListingBoost = {
   status: BoostStatus;
   method: BoostPaymentMethod | null;

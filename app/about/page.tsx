@@ -9,13 +9,34 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import { useLanguage } from '@/contexts/LanguageContext';
-import { translations } from '@/lib/site-translations';
+import { DEFAULT_ABOUT_SETTINGS, getAboutSettings } from '@/lib/about-settings';
 
 export default function AboutPage() {
   const { language } = useLanguage();
-  const t = translations[language].about;
+  const [settings, setSettings] = useState(DEFAULT_ABOUT_SETTINGS);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getAboutSettings()
+      .then((next) => {
+        if (!cancelled) {
+          setSettings(next);
+        }
+      })
+      .catch(() => {
+        // Keep the default content already in state.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const t = settings[language];
 
   return (
     <main className="overflow-hidden">

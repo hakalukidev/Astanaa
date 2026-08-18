@@ -3,6 +3,7 @@
 
 import {
   BarChart3,
+  BookOpen,
   ClipboardCheck,
   FileText,
   Image,
@@ -67,6 +68,11 @@ const catalogItems = [
     href: "/admin/property-types",
     label: "Property Type Categories",
     icon: Tags,
+  },
+  {
+    href: "/admin/about",
+    label: "About Us Page",
+    icon: BookOpen,
   },
   {
     href: "/admin/terms",

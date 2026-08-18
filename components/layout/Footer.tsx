@@ -1,16 +1,19 @@
 'use client';
 
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { FileText, Mail, MapPin, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { FaFacebook, FaInstagram, FaTwitter, FaYoutube } from 'react-icons/fa';
+import { FaFacebook, FaInstagram, FaTiktok, FaTwitter, FaYoutube } from 'react-icons/fa';
 
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DEFAULT_FOOTER_SETTINGS, getFooterSettings, type FooterSettings } from '@/lib/footer-settings';
 import { translations } from '@/lib/site-translations';
 
 const SOCIAL_LINKS: {
-  key: keyof Pick<FooterSettings, 'facebookUrl' | 'instagramUrl' | 'twitterUrl' | 'youtubeUrl'>;
+  key: keyof Pick<
+    FooterSettings,
+    'facebookUrl' | 'instagramUrl' | 'twitterUrl' | 'youtubeUrl' | 'tiktokUrl'
+  >;
   label: string;
   Icon: typeof FaFacebook;
   hoverClass: string;
@@ -19,6 +22,7 @@ const SOCIAL_LINKS: {
   { key: 'instagramUrl', label: 'Instagram', Icon: FaInstagram, hoverClass: 'hover:bg-pink-600' },
   { key: 'twitterUrl', label: 'Twitter', Icon: FaTwitter, hoverClass: 'hover:bg-sky-500' },
   { key: 'youtubeUrl', label: 'YouTube', Icon: FaYoutube, hoverClass: 'hover:bg-red-600' },
+  { key: 'tiktokUrl', label: 'TikTok', Icon: FaTiktok, hoverClass: 'hover:bg-black' },
 ];
 
 export default function Footer() {
@@ -134,6 +138,15 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      {/* Terms & Conditions signboard — always visible, at the very bottom */}
+      <Link
+        href="/terms"
+        className="flex items-center justify-center gap-2 bg-amber-400 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-900 transition-colors hover:bg-amber-300 md:text-sm"
+      >
+        <FileText size={16} className="shrink-0" />
+        {t.termsSignboard}
+      </Link>
     </footer>
   );
 }

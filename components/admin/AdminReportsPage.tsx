@@ -13,13 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { subscribeToAllListingsForAdmin } from "@/lib/listing-service";
-import { formatDurationMs, type Listing } from "@/lib/listings";
+import { BOOST_PRICE_BDT, formatDurationMs, type Listing } from "@/lib/listings";
 import { getVisitStats, type VisitStats } from "@/lib/visits";
-
-// Fixed boost price shown throughout the app (post-ad/listing detail): ৳100
-// per boosted post. There's no separate "payments" collection — a boost
-// request on a listing *is* the payment record.
-const BOOST_PRICE_BDT = 100;
 
 type PeriodStarts = {
   today: number;

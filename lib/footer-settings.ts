@@ -15,6 +15,7 @@ export type FooterSettings = {
   instagramUrl: string;
   twitterUrl: string;
   youtubeUrl: string;
+  tiktokUrl: string;
 };
 
 /**
@@ -34,6 +35,7 @@ export const DEFAULT_FOOTER_SETTINGS: FooterSettings = {
   instagramUrl: "",
   twitterUrl: "",
   youtubeUrl: "",
+  tiktokUrl: "",
 };
 
 function mergeWithDefaults(data: Record<string, unknown> | undefined): FooterSettings {

@@ -112,7 +112,7 @@ export function computeUserPeriodStats(users: SiteUser[]): UserPeriodStats {
   return stats;
 }
 
-export type ChartGranularity = "day" | "week" | "month" | "year";
+export type ChartGranularity = "day" | "week" | "month" | "year" | "all";
 
 export type ChartBucket = {
   label: string;
@@ -132,6 +132,10 @@ export function bucketUsersByGranularity(
 
   if (withDates.length === 0) {
     return [];
+  }
+
+  if (granularity === "all") {
+    return [{ label: "All time", count: withDates.length }];
   }
 
   const now = new Date();

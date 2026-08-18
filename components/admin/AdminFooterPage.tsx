@@ -161,6 +161,15 @@ export default function AdminFooterPage() {
                       placeholder="https://youtube.com/@astanaa"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktokUrl">TikTok URL</Label>
+                    <Input
+                      id="tiktokUrl"
+                      value={settings.tiktokUrl}
+                      onChange={(event) => updateField("tiktokUrl", event.target.value)}
+                      placeholder="https://tiktok.com/@astanaa"
+                    />
+                  </div>
                 </div>
               </section>
 

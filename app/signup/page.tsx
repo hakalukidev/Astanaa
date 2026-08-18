@@ -54,10 +54,11 @@ export default function SignUpPage() {
   const contactValue = channel === "email" ? email : phone;
 
   useEffect(() => {
-    getTermsAndConditions()
+    setIsTermsLoading(true);
+    getTermsAndConditions(language)
       .then(setTermsContent)
       .finally(() => setIsTermsLoading(false));
-  }, []);
+  }, [language]);
 
   function resetOtpState() {
     setOtpStage("idle");

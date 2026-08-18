@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { subscribeToAllListingsForAdmin } from "@/lib/listing-service";
+import { BOOST_PRICE_BDT, type Listing } from "@/lib/listings";
 import {
   bucketUsersByGranularity,
   computeUserPeriodStats,
@@ -27,7 +29,28 @@ const GRANULARITY_OPTIONS: { value: ChartGranularity; label: string }[] = [
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
   { value: "year", label: "Year" },
+  { value: "all", label: "All" },
 ];
+
+type UserActivity = {
+  postsCount: number;
+  totalSpentBdt: number;
+};
+
+function buildUserActivityMap(listings: Listing[]): Map<string, UserActivity> {
+  const byUid = new Map<string, UserActivity>();
+
+  for (const listing of listings) {
+    const existing = byUid.get(listing.sellerId) ?? { postsCount: 0, totalSpentBdt: 0 };
+    existing.postsCount += 1;
+    if (listing.boost.requestedAtMs !== null) {
+      existing.totalSpentBdt += BOOST_PRICE_BDT;
+    }
+    byUid.set(listing.sellerId, existing);
+  }
+
+  return byUid;
+}
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
@@ -51,6 +74,7 @@ export default function AdminSiteUsersPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [granularity, setGranularity] = useState<ChartGranularity>("month");
   const [searchTerm, setSearchTerm] = useState("");
+  const [listings, setListings] = useState<Listing[]>([]);
 
   useEffect(() => {
     fetchSiteUsers()
@@ -59,8 +83,14 @@ export default function AdminSiteUsersPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = subscribeToAllListingsForAdmin(setListings);
+    return unsubscribe;
+  }, []);
+
   const periodStats = useMemo(() => computeUserPeriodStats(users), [users]);
   const chartData = useMemo(() => bucketUsersByGranularity(users, granularity), [users, granularity]);
+  const activityByUid = useMemo(() => buildUserActivityMap(listings), [listings]);
 
   const visibleUsers = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -173,23 +203,33 @@ export default function AdminSiteUsersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Posts</TableHead>
+                    <TableHead className="text-right">Total spent</TableHead>
                     <TableHead className="text-right">Joined</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleUsers.map((user) => (
-                    <TableRow key={user.uid}>
-                      <TableCell className="font-mono text-xs font-semibold text-blue-700">
-                        {user.displayId}
-                      </TableCell>
-                      <TableCell className="font-medium text-blue-950">{user.name || "Unknown"}</TableCell>
-                      <TableCell>{user.phone || "—"}</TableCell>
-                      <TableCell>{user.email || "—"}</TableCell>
-                      <TableCell className="text-right text-sm text-blue-600">
-                        {formatJoinedDate(user.createdAtMs)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {visibleUsers.map((user) => {
+                    const activity = activityByUid.get(user.uid);
+
+                    return (
+                      <TableRow key={user.uid}>
+                        <TableCell className="font-mono text-xs font-semibold text-blue-700">
+                          {user.displayId}
+                        </TableCell>
+                        <TableCell className="font-medium text-blue-950">{user.name || "Unknown"}</TableCell>
+                        <TableCell>{user.phone || "—"}</TableCell>
+                        <TableCell>{user.email || "—"}</TableCell>
+                        <TableCell className="text-right">{activity?.postsCount ?? 0}</TableCell>
+                        <TableCell className="text-right font-semibold text-green-700">
+                          ৳ {(activity?.totalSpentBdt ?? 0).toLocaleString("en-BD")}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-blue-600">
+                          {formatJoinedDate(user.createdAtMs)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

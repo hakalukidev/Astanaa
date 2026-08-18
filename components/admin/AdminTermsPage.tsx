@@ -6,17 +6,25 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import type { Language } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import { getTermsAndConditions, updateTermsAndConditions } from "@/lib/terms";
+import { cn } from "@/lib/utils";
+
+const TABS: { value: Language; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "bn", label: "বাংলা (Bangla)" },
+];
 
 export default function AdminTermsPage() {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState<Record<Language, string>>({ en: "", bn: "" });
+  const [activeTab, setActiveTab] = useState<Language>("en");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    getTermsAndConditions()
-      .then(setContent)
+    Promise.all([getTermsAndConditions("en"), getTermsAndConditions("bn")])
+      .then(([en, bn]) => setContent({ en, bn }))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -39,7 +47,9 @@ export default function AdminTermsPage() {
           <CardTitle className="text-blue-950">Terms & Conditions</CardTitle>
           <CardDescription>
             Shown to every user at signup — they must agree to this text before
-            they can create an account. Editing here updates it live for everyone.
+            they can create an account. Users who have Bangla selected see the
+            Bangla text below; everyone else sees the English text. Editing
+            here updates it live for everyone.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -50,16 +60,40 @@ export default function AdminTermsPage() {
             </div>
           ) : (
             <>
+              <div className="flex gap-2 border-b border-blue-100">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setActiveTab(tab.value)}
+                    className={cn(
+                      "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                      activeTab === tab.value
+                        ? "border-blue-600 text-blue-700"
+                        : "border-transparent text-gray-500 hover:text-blue-600"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
               <Textarea
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
+                key={activeTab}
+                value={content[activeTab]}
+                onChange={(event) =>
+                  setContent((prev) => ({ ...prev, [activeTab]: event.target.value }))
+                }
                 rows={20}
                 className="font-mono text-sm"
-                placeholder="Write the terms and conditions here..."
+                placeholder={
+                  activeTab === "en"
+                    ? "Write the terms and conditions here..."
+                    : "এখানে শর্তাবলী লিখুন..."
+                }
               />
               <Button
                 onClick={handleSave}
-                disabled={isSaving || !content.trim()}
+                disabled={isSaving || !content.en.trim() || !content.bn.trim()}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {isSaving ? (

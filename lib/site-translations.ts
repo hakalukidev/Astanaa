@@ -328,6 +328,12 @@ export const translations = {
       socialCta: "Connect with us on social media",
       rightsReserved: "All rights reserved.",
       developedBy: "Developed by",
+      termsSignboard: "Please read our Terms & Conditions",
+    },
+    termsPage: {
+      title: "Terms & Conditions",
+      subtitle: "Please read these terms carefully before using Astanaa.com.",
+      loading: "Loading terms...",
     },
   },
   bn: {
@@ -651,6 +657,12 @@ export const translations = {
       socialCta: "সোশ্যাল মিডিয়ায় আমাদের সাথে যুক্ত থাকুন",
       rightsReserved: "সর্বস্বত্ব সংরক্ষিত।",
       developedBy: "ডেভেলপ করেছে",
+      termsSignboard: "আমাদের শর্তাবলী পড়ুন",
+    },
+    termsPage: {
+      title: "শর্তাবলী",
+      subtitle: "Astanaa.com ব্যবহারের আগে অনুগ্রহ করে এই শর্তাবলী মনোযোগ দিয়ে পড়ুন।",
+      loading: "শর্তাবলী লোড হচ্ছে...",
     },
   },
 } satisfies Record<Language, unknown>;
