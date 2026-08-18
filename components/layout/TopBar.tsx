@@ -694,6 +694,9 @@ export default function TopBar() {
               <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                 {user ? (
                   <>
+                    <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
+                      <User size={14} /> {t.topbar.profile}
+                    </Link>
                     <Link href="/my-listings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy" onClick={() => setIsAccountOpen(false)}>
                       {t.topbar.myListings}
                     </Link>
@@ -833,6 +836,9 @@ export default function TopBar() {
 
             {user ? (
               <>
+                <Link href="/profile" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
+                  {t.topbar.profile}
+                </Link>
                 <Link href="/my-listings" className="block py-2 text-sm text-white/80 hover:text-brand-mint" onClick={() => setIsMenuOpen(false)}>
                   {t.topbar.myListings}
                 </Link>

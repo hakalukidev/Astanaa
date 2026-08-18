@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  updateEmail,
   updateProfile,
   type User,
 } from "firebase/auth";
@@ -46,6 +47,11 @@ type AuthContextValue = {
   }) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
+  /** Lets a signed-in user correct their own name/phone/email. Changing the
+   * email calls Firebase Auth's updateEmail, which throws
+   * "auth/requires-recent-login" if their session is old — callers should
+   * catch that and ask the user to log out and back in first. */
+  updateUserProfile: (input: { name: string; phone: string; email: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -140,6 +146,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         await signOut(auth);
+      },
+      async updateUserProfile({ name, phone, email }) {
+        const auth = getFirebaseAuth();
+        const currentUser = auth?.currentUser;
+
+        if (!auth || !currentUser) {
+          throw new Error("You need to be logged in to update your profile.");
+        }
+
+        if (name !== currentUser.displayName) {
+          await updateProfile(currentUser, { displayName: name });
+        }
+
+        if (email !== currentUser.email) {
+          // Throws "auth/requires-recent-login" on an old session — the
+          // Firestore/local state below intentionally isn't touched in that
+          // case, so the form still reflects the (unchanged) real email.
+          await updateEmail(currentUser, email);
+        }
+
+        if (db) {
+          await setDoc(
+            doc(db, USERS_COLLECTION, currentUser.uid),
+            { name, phone, email, updatedAt: serverTimestamp() },
+            { merge: true }
+          );
+        }
+
+        setProfile({ uid: currentUser.uid, name, phone, email });
       },
     }),
     [user, profile, adminRole, loading]

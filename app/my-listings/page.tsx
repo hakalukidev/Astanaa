@@ -1,14 +1,15 @@
 "use client";
 
-import { Loader2, MessageCircle, Plus, Zap } from "lucide-react";
+import { Loader2, MessageCircle, Plus, Trash2, User as UserIcon, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/use-toast";
 import { subscribeToSellerBuyRequests, type BuyRequest } from "@/lib/buy-requests";
-import { getListingsBySeller } from "@/lib/listing-service";
+import { deleteListing, getListingsBySeller } from "@/lib/listing-service";
 import { formatListingPrice, getPrimaryListingPhotoUrl, type Listing } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
@@ -16,11 +17,14 @@ export default function MyListingsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const t = translations[language].myListings;
+  const profileText = translations[language].profile;
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
   const [buyRequests, setBuyRequests] = useState<BuyRequest[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -48,6 +52,24 @@ export default function MyListingsPage() {
     return unsubscribe;
   }, [user]);
 
+  async function handleDelete(listing: Listing) {
+    if (!window.confirm(profileText.deleteConfirm)) {
+      return;
+    }
+
+    setDeletingId(listing.id);
+
+    try {
+      await deleteListing(listing);
+      setListings((current) => current.filter((item) => item.id !== listing.id));
+      toast({ title: profileText.deletedTitle, description: listing.title });
+    } catch {
+      toast({ title: profileText.deleteErrorTitle, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (loading || !user) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
@@ -60,7 +82,15 @@ export default function MyListingsPage() {
     <main className="min-h-[70vh] bg-gray-50 py-8">
       <div className="mx-auto max-w-4xl px-4">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+            <Link
+              href="/profile"
+              className="mt-1 flex items-center gap-1 text-xs font-medium text-green-600 hover:underline"
+            >
+              <UserIcon size={12} /> {profileText.title}
+            </Link>
+          </div>
           <Link
             href="/post-ad"
             className="flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
@@ -113,12 +143,11 @@ export default function MyListingsPage() {
         ) : (
           <div className="space-y-3">
             {listings.map((listing) => (
-              <Link
+              <div
                 key={listing.id}
-                href={`/listings/${listing.id}`}
                 className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-3 transition hover:border-green-300"
               >
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                <Link href={`/listings/${listing.id}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                   {getPrimaryListingPhotoUrl(listing) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -127,24 +156,37 @@ export default function MyListingsPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
+                </Link>
+                <Link href={`/listings/${listing.id}`} className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-gray-900">{listing.title}</p>
                   <p className="text-xs text-gray-500">{listing.location}</p>
                   <p className="text-sm font-bold text-green-700">
                     {formatListingPrice(listing.price)}
                   </p>
-                </div>
+                </Link>
                 {listing.boost.status === "active" ? (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase text-white">
+                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase text-white">
                     <Zap size={10} /> {t.boosted}
                   </span>
                 ) : listing.boost.status === "pending" ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase text-amber-700">
+                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase text-amber-700">
                     {t.boostPending}
                   </span>
                 ) : null}
-              </Link>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(listing)}
+                  disabled={deletingId === listing.id}
+                  aria-label={profileText.deleteButton}
+                  className="flex shrink-0 items-center gap-1 rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                >
+                  {deletingId === listing.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
             ))}
           </div>
         )}
