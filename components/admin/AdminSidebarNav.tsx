@@ -5,10 +5,12 @@ import {
   BarChart3,
   BookOpen,
   ClipboardCheck,
+  CreditCard,
   FileText,
   Image,
   Layers,
   LayoutPanelTop,
+  ListChecks,
   MapPin,
   Megaphone,
   ShieldCheck,
@@ -33,6 +35,11 @@ const catalogItems = [
     href: "/admin/reports",
     label: "Reports",
     icon: BarChart3,
+  },
+  {
+    href: "/admin/payments",
+    label: "Payments",
+    icon: CreditCard,
   },
   {
     href: "/admin/promoters",
@@ -78,6 +85,11 @@ const catalogItems = [
     href: "/admin/terms",
     label: "Terms & Conditions",
     icon: FileText,
+  },
+  {
+    href: "/admin/rules",
+    label: "Rules & Restrictions",
+    icon: ListChecks,
   },
   {
     href: "/admin/footer",

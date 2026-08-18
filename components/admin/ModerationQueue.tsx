@@ -1,16 +1,20 @@
 "use client";
 
-import { Check, Loader2, MapPin, Trash2, X } from "lucide-react";
+import { Check, Loader2, MapPin, Pencil, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import LocationCascadeSelect, {
+  type LocationCascadeValue,
+} from "@/components/listings/LocationCascadeSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { type AdminRole } from "@/lib/admin-auth";
-import { deleteListing, markListingStatus, subscribeToListingsByStatus } from "@/lib/listing-service";
+import { deleteListing, markListingStatus, subscribeToListingsByStatus, updateListing } from "@/lib/listing-service";
 import {
   formatDurationMs,
+  formatListingLocation,
   formatListingPrice,
   getListingThumbnailUrl,
   getPrimaryListingPhotoUrl,
@@ -49,6 +53,9 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [locationDraft, setLocationDraft] = useState<LocationCascadeValue | null>(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -83,6 +90,41 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
       toast({ title: "Could not reject listing", variant: "destructive" });
     } finally {
       setPendingId(null);
+    }
+  }
+
+  function handleStartEditLocation(listing: Listing) {
+    setEditingLocationId(listing.id);
+    setLocationDraft({
+      locationDivision: listing.locationDivision,
+      locationDistrict: listing.locationDistrict,
+      locationUpazila: listing.locationUpazila,
+      locationArea: listing.locationArea,
+      locationExtra: listing.locationExtra,
+    });
+  }
+
+  function handleCancelEditLocation() {
+    setEditingLocationId(null);
+    setLocationDraft(null);
+  }
+
+  async function handleSaveLocation(listing: Listing) {
+    if (!locationDraft) return;
+
+    setIsSavingLocation(true);
+    try {
+      await updateListing(listing.id, {
+        ...locationDraft,
+        location: formatListingLocation(locationDraft),
+      });
+      toast({ title: "Location updated", description: listing.title });
+      setEditingLocationId(null);
+      setLocationDraft(null);
+    } catch {
+      toast({ title: "Could not update location", variant: "destructive" });
+    } finally {
+      setIsSavingLocation(false);
     }
   }
 
@@ -185,6 +227,15 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
                       </div>
                       <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
                         <MapPin className="h-3 w-3 shrink-0" /> {listing.location}
+                        {editingLocationId !== listing.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditLocation(listing)}
+                            className="ml-1 inline-flex items-center gap-1 text-blue-600 hover:underline"
+                          >
+                            <Pencil className="h-3 w-3" /> Edit
+                          </button>
+                        )}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold text-green-700">
                         {formatListingPrice(listing.price)}
@@ -201,6 +252,35 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
                             : ""}
                         </p>
                       ) : null}
+
+                      {editingLocationId === listing.id && locationDraft && (
+                        <div className="mt-3 space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                          <LocationCascadeSelect value={locationDraft} onChange={setLocationDraft} />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700"
+                              disabled={isSavingLocation}
+                              onClick={() => handleSaveLocation(listing)}
+                            >
+                              {isSavingLocation ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                              Save location
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isSavingLocation}
+                              onClick={handleCancelEditLocation}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">

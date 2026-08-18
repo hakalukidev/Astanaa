@@ -40,7 +40,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
   return (
     <Link
       href={`/listings/${listing.id}`}
-      className="group flex w-full max-w-[19rem] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)] transition duration-300 hover:-translate-y-1 hover:border-green-300 hover:shadow-[0_28px_50px_-32px_rgba(15,23,42,0.75)]"
+      className="group flex w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_40px_-34px_rgba(15,23,42,0.75)] transition duration-300 hover:-translate-y-1 hover:border-green-300 hover:shadow-[0_28px_50px_-32px_rgba(15,23,42,0.75)]"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
         {photoUrl ? (

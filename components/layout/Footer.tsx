@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Mail, MapPin, Phone } from 'lucide-react';
+import { FileText, ListChecks, Mail, MapPin, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FaFacebook, FaInstagram, FaTiktok, FaTwitter, FaYoutube } from 'react-icons/fa';
@@ -139,14 +139,23 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Terms & Conditions signboard — always visible, at the very bottom */}
-      <Link
-        href="/terms"
-        className="flex items-center justify-center gap-2 bg-amber-400 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-900 transition-colors hover:bg-amber-300 md:text-sm"
-      >
-        <FileText size={16} className="shrink-0" />
-        {t.termsSignboard}
-      </Link>
+      {/* Terms & Rules signboard — always visible, at the very bottom */}
+      <div className="flex flex-col divide-y divide-amber-500/30 bg-amber-400 sm:flex-row sm:divide-x sm:divide-y-0">
+        <Link
+          href="/terms"
+          className="flex flex-1 items-center justify-center gap-2 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-900 transition-colors hover:bg-amber-300 md:text-sm"
+        >
+          <FileText size={16} className="shrink-0" />
+          {t.termsSignboard}
+        </Link>
+        <Link
+          href="/rules"
+          className="flex flex-1 items-center justify-center gap-2 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-gray-900 transition-colors hover:bg-amber-300 md:text-sm"
+        >
+          <ListChecks size={16} className="shrink-0" />
+          {t.rulesSignboard}
+        </Link>
+      </div>
     </footer>
   );
 }

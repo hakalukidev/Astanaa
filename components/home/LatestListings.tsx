@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
+import PriceFilterDropdown, { type PriceRange } from "@/components/listings/PriceFilterDropdown";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { type Listing } from "@/lib/listings";
+import { matchesPriceBand, type Listing } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
 type LatestListingsProps = {
@@ -32,9 +33,12 @@ export default function LatestListings({ listings }: LatestListingsProps) {
   const { language } = useLanguage();
   const t = translations[language].listings;
   const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [priceRange, setPriceRange] = useState<PriceRange>({ min: null, max: null });
 
   const sortedListings = useMemo(() => {
-    return [...listings].sort((left, right) => {
+    const filtered = listings.filter((listing) => matchesPriceBand(listing.price, priceRange));
+
+    return filtered.sort((left, right) => {
       const leftBoosted = left.boost.status === "active" ? 1 : 0;
       const rightBoosted = right.boost.status === "active" ? 1 : 0;
 
@@ -44,7 +48,7 @@ export default function LatestListings({ listings }: LatestListingsProps) {
 
       return compareBySortOption(left, right, sortOption);
     });
-  }, [listings, sortOption]);
+  }, [listings, priceRange, sortOption]);
 
   if (listings.length === 0) {
     return (
@@ -69,41 +73,46 @@ export default function LatestListings({ listings }: LatestListingsProps) {
     <section className="border-t border-slate-200 bg-[#f5f4ef] py-14">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-3xl text-left">
-            <span className="inline-flex border border-slate-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-600">
-              Fresh on the market
-            </span>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-              Latest Listings
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              Recently posted apartments for sale and rent across Bangladesh.
-            </p>
-          </div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+            Latest Listings
+          </h2>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="latestListingsSort" className="shrink-0 text-sm font-semibold text-slate-700">
-              {t.sortBy}
-            </label>
-            <select
-              id="latestListingsSort"
-              value={sortOption}
-              onChange={(event) => setSortOption(event.target.value as SortOption)}
-              className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-500"
-            >
-              <option value="newest">{t.sortNewest}</option>
-              <option value="oldest">{t.sortOldest}</option>
-              <option value="price-asc">{t.sortPriceAsc}</option>
-              <option value="price-desc">{t.sortPriceDesc}</option>
-            </select>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <PriceFilterDropdown
+              value={priceRange}
+              onChange={setPriceRange}
+              listings={listings}
+              labels={t}
+            />
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="latestListingsSort" className="shrink-0 text-sm font-semibold text-slate-700">
+                {t.sortBy}
+              </label>
+              <select
+                id="latestListingsSort"
+                value={sortOption}
+                onChange={(event) => setSortOption(event.target.value as SortOption)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-500"
+              >
+                <option value="newest">{t.sortNewest}</option>
+                <option value="oldest">{t.sortOldest}</option>
+                <option value="price-asc">{t.sortPriceAsc}</option>
+                <option value="price-desc">{t.sortPriceDesc}</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-5 xl:gap-6">
-          {sortedListings.slice(0, 8).map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
+        {sortedListings.length === 0 ? (
+          <p className="mt-8 py-8 text-center text-sm text-slate-500">{t.noResults}</p>
+        ) : (
+          <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
+            {sortedListings.slice(0, 10).map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

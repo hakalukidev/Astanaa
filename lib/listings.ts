@@ -310,6 +310,32 @@ export const PRICE_BANDS: PriceBand[] = [
   { min: 50000000, max: null },
 ];
 
+/** Whether a listing's price falls within a price band (or a free-typed min/max range) — inclusive at both ends. */
+export function matchesPriceBand(price: number, band: PriceBand) {
+  const matchesMin = band.min === null || price >= band.min;
+  const matchesMax = band.max === null || price <= band.max;
+  return matchesMin && matchesMax;
+}
+
+type PriceBandLabels = {
+  priceUnderPrefix: string;
+  priceAbovePrefix: string;
+};
+
+/** Human-readable label for one price band/range, e.g. "Under ৳50 K" or "৳50 K - ৳5 L". */
+export function formatPriceBandLabel(band: PriceBand, labels: PriceBandLabels) {
+  if (band.min === null && band.max !== null) {
+    return `${labels.priceUnderPrefix} ${formatCompactBDT(band.max)}`;
+  }
+  if (band.max === null && band.min !== null) {
+    return `${labels.priceAbovePrefix} ${formatCompactBDT(band.min)}`;
+  }
+  if (band.min !== null && band.max !== null) {
+    return `${formatCompactBDT(band.min)} - ${formatCompactBDT(band.max)}`;
+  }
+  return "";
+}
+
 /** Compact "৳39 K / ৳1.5 L / ৳3.1 Cr" style formatting, following the Bangladeshi lakh/crore scale. */
 export function formatCompactBDT(amount: number) {
   const trim = (value: number) => {

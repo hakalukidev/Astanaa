@@ -1,17 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
+import PriceFilterDropdown, { type PriceRange } from "@/components/listings/PriceFilterDropdown";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  formatCompactBDT,
-  PRICE_BANDS,
-  type Listing,
-  type ListingPurpose,
-  type PriceBand,
-} from "@/lib/listings";
+import { matchesPriceBand, type Listing, type ListingPurpose } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
 type SortOption = "newest" | "oldest" | "price-asc" | "price-desc";
@@ -47,10 +42,7 @@ export default function ListingsCatalogClient({
     (searchParams?.get("purpose") as ListingPurpose | null) ?? "all"
   );
   const [sortOption, setSortOption] = useState<SortOption>("newest");
-  const [minPrice, setMinPrice] = useState<number | null>(null);
-  const [maxPrice, setMaxPrice] = useState<number | null>(null);
-  const [isPriceOpen, setIsPriceOpen] = useState(false);
-  const priceDropdownRef = useRef<HTMLDivElement>(null);
+  const [priceRange, setPriceRange] = useState<PriceRange>({ min: null, max: null });
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
@@ -58,16 +50,6 @@ export default function ListingsCatalogClient({
     setSelectedType(searchParams?.get("type")?.trim() ?? "all");
     setSelectedPurpose((searchParams?.get("purpose") as ListingPurpose | null) ?? "all");
   }, [searchParams]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (priceDropdownRef.current && !priceDropdownRef.current.contains(event.target as Node)) {
-        setIsPriceOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Everything except the price filter — reused both to filter the grid and to
   // compute a live "ads" count per price band, so those counts reflect the
@@ -87,18 +69,9 @@ export default function ListingsCatalogClient({
     });
   }, [initialListings, deferredSearchTerm, selectedType, selectedPurpose]);
 
-  const priceBandCounts = useMemo(
-    () =>
-      PRICE_BANDS.map(
-        (band) =>
-          baseFilteredListings.filter((listing) => matchesPriceBand(listing.price, band)).length
-      ),
-    [baseFilteredListings]
-  );
-
   const filteredListings = useMemo(() => {
     const filtered = baseFilteredListings.filter((listing) =>
-      matchesPriceBand(listing.price, { min: minPrice, max: maxPrice })
+      matchesPriceBand(listing.price, priceRange)
     );
 
     // Boosted (paid) listings always surface first; the chosen sort applies
@@ -113,111 +86,19 @@ export default function ListingsCatalogClient({
 
       return compareBySortOption(left, right, sortOption);
     });
-  }, [baseFilteredListings, minPrice, maxPrice, sortOption]);
-
-  const isPriceFilterActive = minPrice !== null || maxPrice !== null;
-  const priceButtonLabel = isPriceFilterActive
-    ? formatPriceRangeLabel(minPrice, maxPrice, t)
-    : t.priceFilterLabel;
-
-  function selectPriceBand(band: PriceBand) {
-    setMinPrice(band.min);
-    setMaxPrice(band.max);
-  }
-
-  function clearPriceFilter() {
-    setMinPrice(null);
-    setMaxPrice(null);
-  }
+  }, [baseFilteredListings, priceRange, sortOption]);
 
   return (
     <main className="bg-gray-50">
       <section className="bg-white py-10">
         <div className="container mx-auto px-4">
           <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row">
-            <div className="relative" ref={priceDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsPriceOpen((open) => !open)}
-                className={`w-full whitespace-nowrap rounded-md border px-3 py-2.5 text-left text-sm outline-none transition sm:w-auto ${
-                  isPriceFilterActive
-                    ? "border-green-500 bg-green-50 text-green-700 font-medium"
-                    : "border-gray-300 text-gray-700 hover:border-green-500"
-                }`}
-              >
-                {priceButtonLabel}
-              </button>
-
-              {isPriceOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-900">{t.priceHeading}</span>
-                    <div className="flex items-center gap-3">
-                      {isPriceFilterActive && (
-                        <button
-                          type="button"
-                          onClick={clearPriceFilter}
-                          className="text-xs font-medium text-green-600 hover:underline"
-                        >
-                          {t.priceClear}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setIsPriceOpen(false)}
-                        className="rounded-md bg-green-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-green-700"
-                      >
-                        {t.priceApply}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mb-4 flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={minPrice ?? ""}
-                      onChange={(event) =>
-                        setMinPrice(event.target.value === "" ? null : Number(event.target.value))
-                      }
-                      placeholder={t.priceMinPlaceholder}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                    />
-                    <span className="shrink-0 text-gray-400">–</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={maxPrice ?? ""}
-                      onChange={(event) =>
-                        setMaxPrice(event.target.value === "" ? null : Number(event.target.value))
-                      }
-                      placeholder={t.priceMaxPlaceholder}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                    />
-                  </div>
-
-                  <ul className="space-y-2.5">
-                    {PRICE_BANDS.map((band, index) => (
-                      <li key={index}>
-                        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-gray-700">
-                          <input
-                            type="radio"
-                            name="priceBand"
-                            checked={band.min === minPrice && band.max === maxPrice}
-                            onChange={() => selectPriceBand(band)}
-                            className="h-4 w-4 accent-green-600"
-                          />
-                          <span>
-                            {formatPriceBandLabel(band, t)}
-                            <span className="text-gray-400"> · {priceBandCounts[index]} {t.adsCountSuffix}</span>
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+            <PriceFilterDropdown
+              value={priceRange}
+              onChange={setPriceRange}
+              listings={baseFilteredListings}
+              labels={t}
+            />
 
             <div className="flex items-center gap-2">
               <label htmlFor="sortOption" className="shrink-0 text-sm font-medium text-gray-600">
@@ -246,7 +127,7 @@ export default function ListingsCatalogClient({
               {t.noResults}
             </p>
           ) : (
-            <div className="flex flex-wrap justify-center gap-5 xl:gap-6">
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
               {filteredListings.map((listing) => (
                 <ListingCard key={listing.id} listing={listing} />
               ))}
@@ -256,32 +137,4 @@ export default function ListingsCatalogClient({
       </section>
     </main>
   );
-}
-
-function matchesPriceBand(price: number, band: PriceBand) {
-  const matchesMin = band.min === null || price >= band.min;
-  const matchesMax = band.max === null || price <= band.max;
-  return matchesMin && matchesMax;
-}
-
-type PriceLabels = {
-  priceUnderPrefix: string;
-  priceAbovePrefix: string;
-};
-
-function formatPriceBandLabel(band: PriceBand, labels: PriceLabels) {
-  if (band.min === null && band.max !== null) {
-    return `${labels.priceUnderPrefix} ${formatCompactBDT(band.max)}`;
-  }
-  if (band.max === null && band.min !== null) {
-    return `${labels.priceAbovePrefix} ${formatCompactBDT(band.min)}`;
-  }
-  if (band.min !== null && band.max !== null) {
-    return `${formatCompactBDT(band.min)} - ${formatCompactBDT(band.max)}`;
-  }
-  return "";
-}
-
-function formatPriceRangeLabel(minPrice: number | null, maxPrice: number | null, labels: PriceLabels) {
-  return formatPriceBandLabel({ min: minPrice, max: maxPrice }, labels);
 }

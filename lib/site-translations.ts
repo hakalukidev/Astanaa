@@ -222,6 +222,8 @@ export const translations = {
       email: "Email",
       password: "Password",
       passwordPlaceholder: "Your password",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
       submit: "Log in",
       noAccount: "Don't have an account?",
       signUp: "Sign up",
@@ -329,11 +331,17 @@ export const translations = {
       rightsReserved: "All rights reserved.",
       developedBy: "Developed by",
       termsSignboard: "Please read our Terms & Conditions",
+      rulesSignboard: "Rules & Restrictions",
     },
     termsPage: {
       title: "Terms & Conditions",
       subtitle: "Please read these terms carefully before using Astanaa.com.",
       loading: "Loading terms...",
+    },
+    rulesPage: {
+      title: "Rules & Restrictions",
+      subtitle: "Please follow these rules while using Astanaa.com.",
+      loading: "Loading rules...",
     },
   },
   bn: {
@@ -551,6 +559,8 @@ export const translations = {
       email: "ইমেইল",
       password: "পাসওয়ার্ড",
       passwordPlaceholder: "আপনার পাসওয়ার্ড",
+      showPassword: "পাসওয়ার্ড দেখুন",
+      hidePassword: "পাসওয়ার্ড লুকান",
       submit: "লগইন করুন",
       noAccount: "অ্যাকাউন্ট নেই?",
       signUp: "সাইন আপ করুন",
@@ -658,11 +668,17 @@ export const translations = {
       rightsReserved: "সর্বস্বত্ব সংরক্ষিত।",
       developedBy: "ডেভেলপ করেছে",
       termsSignboard: "আমাদের শর্তাবলী পড়ুন",
+      rulesSignboard: "বিধি নিষেধ",
     },
     termsPage: {
       title: "শর্তাবলী",
       subtitle: "Astanaa.com ব্যবহারের আগে অনুগ্রহ করে এই শর্তাবলী মনোযোগ দিয়ে পড়ুন।",
       loading: "শর্তাবলী লোড হচ্ছে...",
+    },
+    rulesPage: {
+      title: "বিধি নিষেধ",
+      subtitle: "Astanaa.com ব্যবহারের সময় অনুগ্রহ করে এই নিয়মগুলো মেনে চলুন।",
+      loading: "বিধি নিষেধ লোড হচ্ছে...",
     },
   },
 } satisfies Record<Language, unknown>;
