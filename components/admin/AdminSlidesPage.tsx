@@ -393,8 +393,8 @@ export default function AdminSlidesPage() {
                 ) : null}
               </div>
              <p className="text-sm text-slate-500">
-  Upload a landscape slide image. Recommended size: 1440×900px or 1600×1000px (minimum 1200×800px). 
-  Keep aspect ratio between 16:11 and 5:3. The image will be automatically cropped to fit the slider.
+  Upload a wide banner-style image — recommended size 2000×400px (a 5:1 ratio), e.g. 2560×507px.
+  The slider box is this same shape, so nothing gets cropped as long as you keep close to 5:1.
 </p>
               {formValues.image ? (
                 <div className="relative h-32 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">

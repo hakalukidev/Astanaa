@@ -53,11 +53,14 @@ export default function HeroSlider() {
 
   return (
     <section className={`${activeSlide.bg} overflow-hidden`}>
-      <div className="flex flex-col md:min-h-[480px] md:flex-row">
+      <div className="flex flex-col md:flex-row">
         <div className="h-1.5 w-full shrink-0 bg-blue-600 md:h-auto md:w-2" />
 
         <div className="order-2 w-full md:order-3 md:flex-1">
-          <div className="relative aspect-[16/11] min-h-[260px] overflow-hidden sm:aspect-[5/3] md:h-full md:min-h-[480px] md:aspect-auto">
+          {/* Matches the wide banner-style images admins upload (~5:1, see the
+           * upload hint in AdminSlidesPage) so object-cover has nothing to
+           * crop — the box's shape already matches the image's. */}
+          <div className="relative aspect-[5/1] min-h-[90px] overflow-hidden">
             <img
               src={activeSlide.image}
               alt={activeSlide.title}
