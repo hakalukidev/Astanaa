@@ -393,8 +393,8 @@ export default function AdminSlidesPage() {
                 ) : null}
               </div>
              <p className="text-sm text-slate-500">
-  Upload a wide banner-style image — recommended size 2000×400px (a 5:1 ratio), e.g. 2560×507px.
-  The slider box is this same shape, so nothing gets cropped as long as you keep close to 5:1.
+  Upload a wide banner-style image — recommended size 3637×1022px.
+  The slider box is this same shape, so nothing gets cropped as long as you keep close to this ratio.
 </p>
               {formValues.image ? (
                 <div className="relative h-32 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
