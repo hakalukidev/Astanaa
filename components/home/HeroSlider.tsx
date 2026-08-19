@@ -3,7 +3,6 @@
 import { fallbackSlides } from "@/lib/home-data";
 import { getAllSlides } from "@/lib/slide-service";
 import { type Slide } from "@/lib/slides";
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -43,8 +42,6 @@ export default function HeroSlider() {
     }
   }, [current, slides.length]);
 
-  const prev = () => setCurrent((p) => (p - 1 + slides.length) % slides.length);
-  const next = () => setCurrent((p) => (p + 1) % slides.length);
   const activeSlide = slides[current];
 
   if (!activeSlide) {
@@ -66,21 +63,6 @@ export default function HeroSlider() {
               alt={activeSlide.title}
               className="absolute inset-0 h-full w-full object-cover"
             />
-
-            <button
-              onClick={prev}
-              aria-label="Previous slide"
-              className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 shadow transition hover:bg-white"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              onClick={next}
-              aria-label="Next slide"
-              className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 shadow transition hover:bg-white"
-            >
-              <ChevronRight size={20} />
-            </button>
 
             <div className="absolute inset-x-0 bottom-3 z-20 flex items-center justify-center gap-2">
               {slides.map((slide, i) => (
