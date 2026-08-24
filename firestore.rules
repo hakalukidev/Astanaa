@@ -34,6 +34,12 @@ service cloud.firestore {
         (adminDoc().data.role == 'super_admin' || adminDoc().data.role == 'admin');
     }
 
+    // super_admin only: site-wide config (settings docs, listing purposes,
+    // property type categories) that regular admins must not touch.
+    function isSuperAdmin() {
+      return hasAdminAccount() && adminDoc().data.role == 'super_admin';
+    }
+
     // super_admin, admin, and moderator can all approve/reject/remove listings.
     function canModerateListings() {
       return hasAdminAccount() && adminDoc().data.role in ['super_admin', 'admin', 'moderator'];
@@ -66,12 +72,12 @@ service cloud.firestore {
     }
 
     // --- settings ----------------------------------------------------------
-    // Site-wide settings docs (currently: terms & conditions shown at signup).
-    // Public read so anyone can view them before agreeing; only admin/super_admin
-    // can edit.
+    // Site-wide settings docs (terms & conditions, About Us, footer, rules &
+    // restrictions). Public read so anyone can view them; only super_admin
+    // can edit — regular admins don't get this page in the admin panel.
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isStaffAdmin();
+      allow write: if isSuperAdmin();
     }
 
     // --- siteVisits ----------------------------------------------------------
@@ -116,21 +122,23 @@ service cloud.firestore {
     // --- propertyTypeCategories ---------------------------------------------
     // The Rent/Sale category list shown in the Browse Property Types menu,
     // post-ad form, and listings filter (lib/property-type-categories.ts).
-    // Public read so every visitor sees the current list; only staff-admin
-    // can add, edit, or remove categories.
+    // Public read so every visitor sees the current list; only super_admin
+    // can add, edit, or remove categories — regular admins don't get this
+    // page in the admin panel.
     match /propertyTypeCategories/{categoryId} {
       allow read: if true;
-      allow write: if isStaffAdmin();
+      allow write: if isSuperAdmin();
     }
 
     // --- listingPurposes -----------------------------------------------------
     // The top-level groups ("For Rent", "For Sale", and whatever an admin
     // adds beyond those) that propertyTypeCategories hang off of
     // (lib/listing-purposes.ts). Public read so the Browse menu and post-ad
-    // form work for everyone; only staff-admin can add, edit, or remove them.
+    // form work for everyone; only super_admin can add, edit, or remove them
+    // — regular admins don't get this page in the admin panel.
     match /listingPurposes/{purposeId} {
       allow read: if true;
-      allow write: if isStaffAdmin();
+      allow write: if isSuperAdmin();
     }
 
     // --- listings ------------------------------------------------------

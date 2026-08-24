@@ -1,8 +1,8 @@
 import AdminRulesPage from "@/components/admin/AdminRulesPage";
-import { requireStaffAdmin } from "@/lib/admin-auth";
+import { requireSuperAdmin } from "@/lib/admin-auth";
 
 export default async function AdminRulesRoute() {
-  await requireStaffAdmin();
+  await requireSuperAdmin();
 
   return <AdminRulesPage />;
 }

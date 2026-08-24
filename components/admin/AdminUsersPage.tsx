@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import { Loader2, Pencil, Plus, ShieldCheck, Trash2, UserRound } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ type AdminRole = "admin" | "super_admin" | "moderator" | "promoter";
 type AdminUser = {
   uid: string;
   email: string;
+  name: string | null;
   role: AdminRole;
   createdAt: string | null;
 };
@@ -82,11 +83,17 @@ type AdminUsersPageProps = {
 export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AdminRole>("admin");
   const [formError, setFormError] = useState("");
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editError, setEditError] = useState("");
 
   const {
     data: users = [],
@@ -102,7 +109,7 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ name, email, password, role }),
       });
 
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -114,6 +121,7 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
       setIsCreateOpen(false);
+      setName("");
       setEmail("");
       setPassword("");
       setRole("admin");
@@ -122,6 +130,45 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
     },
     onError: (mutationError: Error) => {
       setFormError(mutationError.message);
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({
+      uid,
+      nextName,
+      nextPassword,
+    }: {
+      uid: string;
+      nextName: string;
+      nextPassword: string;
+    }) => {
+      const body: { name: string; password?: string } = { name: nextName };
+      if (nextPassword) {
+        body.password = nextPassword;
+      }
+
+      const response = await fetch(`/api/admin/users/${uid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Could not update this admin user.");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersQueryKey });
+      setEditingUser(null);
+      setEditPassword("");
+      setEditError("");
+      toast({ title: "Admin user updated" });
+    },
+    onError: (mutationError: Error) => {
+      setEditError(mutationError.message);
     },
   });
 
@@ -194,6 +241,29 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
     deleteMutation.mutate(user.uid);
   }
 
+  function openEditDialog(user: AdminUser) {
+    setEditingUser(user);
+    setEditName(user.name ?? "");
+    setEditPassword("");
+    setEditError("");
+  }
+
+  function handleEditSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingUser) {
+      return;
+    }
+
+    if (editPassword && editPassword.length < 8) {
+      setEditError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setEditError("");
+    editMutation.mutate({ uid: editingUser.uid, nextName: editName, nextPassword: editPassword });
+  }
+
   return (
     <div className="space-y-6">
       <Card className="border-blue-200 shadow-sm">
@@ -231,6 +301,7 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Added</TableHead>
@@ -244,17 +315,18 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
 
                   return (
                     <TableRow key={user.uid}>
-                      <TableCell className="min-w-[220px]">
+                      <TableCell className="min-w-[160px]">
                         <div className="flex items-center gap-3">
                           <div className="rounded-full bg-blue-100 p-2 text-blue-700">
                             <UserRound className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="font-semibold text-blue-950">{user.email}</p>
+                            <p className="font-semibold text-blue-950">{user.name || "—"}</p>
                             {isSelf ? <p className="text-xs text-slate-500">You</p> : null}
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="min-w-[200px] text-sm text-blue-950">{user.email}</TableCell>
 
                       <TableCell>
                         <span
@@ -296,6 +368,17 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                            onClick={() => openEditDialog(user)}
+                            title="Edit name or reset password"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
                             className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                             onClick={() => handleDelete(user)}
                             disabled={isSelf || isRowPending}
@@ -328,6 +411,15 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreateSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="new-admin-name">Name (optional)</Label>
+              <Input
+                id="new-admin-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Jane Doe"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="new-admin-email">Email</Label>
               <Input
@@ -378,6 +470,63 @@ export default function AdminUsersPage({ currentUid }: AdminUsersPageProps) {
               >
                 {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {createMutation.isPending ? "Creating..." : "Create admin user"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editingUser !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingUser(null);
+            setEditError("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-blue-950">Edit admin user</DialogTitle>
+            <DialogDescription>
+              Update {editingUser?.email}&apos;s name, or set a new password for them.
+              Leave the password blank to keep their current one.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleEditSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="edit-admin-name">Name</Label>
+              <Input
+                id="edit-admin-name"
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                placeholder="Jane Doe"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-admin-password">New password</Label>
+              <Input
+                id="edit-admin-password"
+                type="text"
+                value={editPassword}
+                onChange={(event) => setEditPassword(event.target.value)}
+                placeholder="Leave blank to keep current password"
+                minLength={8}
+              />
+            </div>
+            {editError ? (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {editError}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={editMutation.isPending}
+              >
+                {editMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {editMutation.isPending ? "Saving..." : "Save changes"}
               </Button>
             </DialogFooter>
           </form>

@@ -183,6 +183,25 @@ export async function requireStaffAdmin(): Promise<AdminSession> {
   return admin;
 }
 
+/**
+ * For super-admin-only settings pages (listing purposes, property type
+ * categories, About Us, Terms & Conditions, Rules & Restrictions, Footer) —
+ * regular admins don't get access, they're bounced back to the posts list.
+ */
+export async function requireSuperAdmin(): Promise<AdminSession> {
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
+    redirect("/admin/login");
+  }
+
+  if (admin.role !== "super_admin") {
+    redirect(admin.role === "promoter" ? "/admin/my-posts" : admin.role === "moderator" ? "/admin/moderation" : "/admin/posts");
+  }
+
+  return admin;
+}
+
 /** For the moderation queue — staff admins and moderators, not promoters. */
 export async function requireModerator(): Promise<AdminSession> {
   const admin = await getCurrentAdmin();

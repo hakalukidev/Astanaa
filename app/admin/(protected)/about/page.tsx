@@ -1,8 +1,8 @@
 import AdminAboutPage from "@/components/admin/AdminAboutPage";
-import { requireStaffAdmin } from "@/lib/admin-auth";
+import { requireSuperAdmin } from "@/lib/admin-auth";
 
 export default async function AdminAboutRoute() {
-  await requireStaffAdmin();
+  await requireSuperAdmin();
 
   return <AdminAboutPage />;
 }

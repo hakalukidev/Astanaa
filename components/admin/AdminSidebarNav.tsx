@@ -66,6 +66,10 @@ const catalogItems = [
     label: "Locations",
     icon: MapPin,
   },
+];
+
+// Site-wide config pages — super admin only, regular admins don't get these.
+const superAdminOnlyItems = [
   {
     href: "/admin/purposes",
     label: "Listing Purposes",
@@ -126,12 +130,11 @@ export default function AdminSidebarNav({ role }: AdminSidebarNavProps) {
     items = [myPostsItem];
   } else if (role === "moderator") {
     items = [moderationItem];
+  } else if (role === "super_admin") {
+    items = [...catalogItems, ...superAdminOnlyItems, moderationItem, usersItem];
   } else {
-    // admin & super_admin
+    // admin
     items = [...catalogItems, moderationItem];
-    if (role === "super_admin") {
-      items = [...items, usersItem];
-    }
   }
 
   return (

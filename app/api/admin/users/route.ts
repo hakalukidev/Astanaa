@@ -26,6 +26,7 @@ export async function GET() {
     return {
       uid: docSnapshot.id,
       email: data.email as string,
+      name: (data.name as string | undefined) ?? null,
       role: data.role as AdminRole,
       createdAt: createdAt ? createdAt.toISOString() : null,
       createdBy: (data.createdBy as string | undefined) ?? null,
@@ -53,12 +54,13 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = (await request.json().catch(() => null)) as
-    | { email?: string; password?: string; role?: string }
+    | { email?: string; password?: string; role?: string; name?: string }
     | null;
 
   const email = payload?.email?.trim().toLowerCase();
   const password = payload?.password;
   const role = payload?.role;
+  const name = payload?.name?.trim() || null;
 
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
@@ -79,7 +81,11 @@ export async function POST(request: NextRequest) {
 
   let uid: string;
   try {
-    const userRecord = await adminAuth.createUser({ email, password });
+    const userRecord = await adminAuth.createUser({
+      email,
+      password,
+      ...(name ? { displayName: name } : {}),
+    });
     uid = userRecord.uid;
   } catch (error) {
     const code = (error as { code?: string })?.code;
@@ -100,10 +106,11 @@ export async function POST(request: NextRequest) {
     .doc(uid)
     .set({
       email,
+      name,
       role,
       createdAt: new Date(),
       createdBy: currentAdmin.uid,
     });
 
-  return NextResponse.json({ uid, email, role }, { status: 201 });
+  return NextResponse.json({ uid, email, name, role }, { status: 201 });
 }
