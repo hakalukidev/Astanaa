@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 import { Fragment, useDeferredValue, useEffect, useMemo, useState } from "react";
 
@@ -16,6 +17,7 @@ import {
 import { formatTime, getDayRangeMs, toDateInputValue } from "@/lib/admin-date-range";
 import { subscribeToAllListingsForAdmin, subscribeToModerationLog } from "@/lib/listing-service";
 import type { Listing, ModerationLogEntry } from "@/lib/listings";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY, type StaffNames } from "@/lib/staff-names";
 import { cn } from "@/lib/utils";
 
 type ModeratorActionType = "approved" | "rejected" | "removed";
@@ -51,11 +53,12 @@ type ModeratorRow = {
 function buildModeratorRows(
   listings: Listing[],
   logEntries: ModerationLogEntry[],
-  dayRange: { start: number; end: number }
+  dayRange: { start: number; end: number },
+  staffNames: StaffNames
 ): ModeratorRow[] {
   const byId = new Map<string, ModeratorRow>();
 
-  function getRow(id: string, name: string) {
+  function getRow(id: string, fallbackName: string) {
     const existing = byId.get(id);
     if (existing) {
       return existing;
@@ -63,7 +66,7 @@ function buildModeratorRows(
 
     const created: ModeratorRow = {
       id,
-      name,
+      name: resolveStaffName(staffNames, id, fallbackName),
       approvedCount: 0,
       rejectedCount: 0,
       removedCount: 0,
@@ -142,6 +145,11 @@ export default function AdminModeratorsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
+
   useEffect(() => {
     let listingsLoaded = false;
     let logLoaded = false;
@@ -177,8 +185,8 @@ export default function AdminModeratorsPage() {
       return [];
     }
 
-    return buildModeratorRows(listings, logEntries, dayRange);
-  }, [listings, logEntries, dayRange]);
+    return buildModeratorRows(listings, logEntries, dayRange, staffNames);
+  }, [listings, logEntries, dayRange, staffNames]);
 
   const filteredRows = useMemo(() => {
     const normalized = deferredSearchTerm.trim().toLowerCase();

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { subscribeToAllListingsForAdmin } from "@/lib/listing-service";
 import { BOOST_PRICE_BDT, type BoostStatus, type Listing } from "@/lib/listings";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY } from "@/lib/staff-names";
 import { cn } from "@/lib/utils";
 
 type PeriodTotals = {
@@ -105,6 +107,11 @@ export default function AdminPaymentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToAllListingsForAdmin((nextListings) => {
       setListings(nextListings);
@@ -136,14 +143,16 @@ export default function AdminPaymentsPage() {
     const normalized = searchTerm.trim().toLowerCase();
     if (!normalized) return payments;
 
-    return payments.filter(
-      (listing) =>
+    return payments.filter((listing) => {
+      const sellerName = resolveStaffName(staffNames, listing.sellerId, listing.sellerName);
+      return (
         listing.title.toLowerCase().includes(normalized) ||
-        listing.sellerName.toLowerCase().includes(normalized) ||
+        sellerName.toLowerCase().includes(normalized) ||
         listing.sellerPhone.toLowerCase().includes(normalized) ||
         (listing.boost.transactionId ?? "").toLowerCase().includes(normalized)
-    );
-  }, [payments, searchTerm]);
+      );
+    });
+  }, [payments, searchTerm, staffNames]);
 
   if (isLoading) {
     return (
@@ -235,7 +244,9 @@ export default function AdminPaymentsPage() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-blue-950">{listing.sellerName || "Unknown"}</div>
+                        <div className="font-medium text-blue-950">
+                          {resolveStaffName(staffNames, listing.sellerId, listing.sellerName) || "Unknown"}
+                        </div>
                         <div className="text-xs text-slate-500">{listing.sellerPhone}</div>
                       </TableCell>
                       <TableCell>

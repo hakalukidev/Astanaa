@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Loader2, Search } from "lucide-react";
 import { Fragment, useDeferredValue, useEffect, useMemo, useState } from "react";
 
@@ -16,6 +17,7 @@ import {
 import { formatTime, getDayRangeMs, toDateInputValue } from "@/lib/admin-date-range";
 import { subscribeToAllListingsForAdmin } from "@/lib/listing-service";
 import type { Listing, ListingStatus } from "@/lib/listings";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY, type StaffNames } from "@/lib/staff-names";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
@@ -42,7 +44,11 @@ type PromoterRow = {
   postsThatDay: Listing[];
 };
 
-function buildPromoterRows(listings: Listing[], dayRange: { start: number; end: number }): PromoterRow[] {
+function buildPromoterRows(
+  listings: Listing[],
+  dayRange: { start: number; end: number },
+  staffNames: StaffNames
+): PromoterRow[] {
   const byId = new Map<string, PromoterRow>();
 
   function getRow(listing: Listing) {
@@ -53,7 +59,7 @@ function buildPromoterRows(listings: Listing[], dayRange: { start: number; end: 
 
     const created: PromoterRow = {
       id: listing.sellerId,
-      name: listing.sellerName,
+      name: resolveStaffName(staffNames, listing.sellerId, listing.sellerName),
       createdCount: 0,
       approvedCount: 0,
       rejectedCount: 0,
@@ -113,6 +119,11 @@ export default function AdminPromotersPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToAllListingsForAdmin((nextListings) => {
       setListings(nextListings);
@@ -129,8 +140,8 @@ export default function AdminPromotersPage() {
       return [];
     }
 
-    return buildPromoterRows(listings, dayRange);
-  }, [listings, dayRange]);
+    return buildPromoterRows(listings, dayRange, staffNames);
+  }, [listings, dayRange, staffNames]);
 
   const filteredRows = useMemo(() => {
     const normalized = deferredSearchTerm.trim().toLowerCase();

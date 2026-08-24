@@ -10,5 +10,5 @@ export default async function AdminMyPostsRoute() {
     redirect("/admin/login");
   }
 
-  return <AdminMyPosts uid={admin.uid} name={admin.email} />;
+  return <AdminMyPosts uid={admin.uid} name={admin.name} />;
 }

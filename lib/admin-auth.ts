@@ -16,6 +16,8 @@ const VALID_ADMIN_ROLES: AdminRole[] = ["super_admin", "admin", "moderator", "pr
 export type AdminSession = {
   uid: string;
   email: string;
+  /** Current display name from the `admins` doc, falling back to email if unset. */
+  name: string;
   role: AdminRole;
 };
 
@@ -76,11 +78,14 @@ export async function createAdminSessionCookie(
     expiresIn: SESSION_MAX_AGE_MS,
   });
 
+  const email = decoded.email ?? adminDoc.data()?.email ?? "";
+
   return {
     sessionCookie,
     session: {
       uid: decoded.uid,
-      email: decoded.email ?? adminDoc.data()?.email ?? "",
+      email,
+      name: (adminDoc.data()?.name as string | undefined) || email,
       role,
     },
   };
@@ -145,9 +150,12 @@ export async function getCurrentAdmin(): Promise<AdminSession | null> {
       return null;
     }
 
+    const email = decoded.email ?? adminDoc.data()?.email ?? "";
+
     return {
       uid: decoded.uid,
-      email: decoded.email ?? adminDoc.data()?.email ?? "",
+      email,
+      name: (adminDoc.data()?.name as string | undefined) || email,
       role,
     };
   } catch {

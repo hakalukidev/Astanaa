@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { subscribeToAllListingsForAdmin } from "@/lib/listing-service";
 import { BOOST_PRICE_BDT, formatDurationMs, type Listing } from "@/lib/listings";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY } from "@/lib/staff-names";
 import { getVisitStats, type VisitStats } from "@/lib/visits";
 
 type PeriodStarts = {
@@ -157,6 +159,11 @@ export default function AdminReportsPage() {
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [isVisitsLoading, setIsVisitsLoading] = useState(true);
 
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToAllListingsForAdmin((nextListings) => {
       setListings(nextListings);
@@ -180,10 +187,10 @@ export default function AdminReportsPage() {
         listings,
         periods,
         (listing) => listing.sellerId,
-        (listing) => listing.sellerName,
+        (listing) => resolveStaffName(staffNames, listing.sellerId, listing.sellerName),
         (listing) => listing.createdAtMs
       ),
-    [listings, periods]
+    [listings, periods, staffNames]
   );
 
   const paymentRows = useMemo(
@@ -192,10 +199,10 @@ export default function AdminReportsPage() {
         listings.filter((listing) => listing.boost.requestedAtMs !== null),
         periods,
         (listing) => listing.sellerId,
-        (listing) => listing.sellerName,
+        (listing) => resolveStaffName(staffNames, listing.sellerId, listing.sellerName),
         (listing) => listing.boost.requestedAtMs
       ),
-    [listings, periods]
+    [listings, periods, staffNames]
   );
 
   const moderatedListings = useMemo(
@@ -213,10 +220,10 @@ export default function AdminReportsPage() {
         moderatedListings,
         periods,
         (listing) => listing.moderatedBy,
-        (listing) => listing.moderatedByName,
+        (listing) => resolveStaffName(staffNames, listing.moderatedBy, listing.moderatedByName),
         (listing) => listing.moderatedAtMs
       ),
-    [moderatedListings, periods]
+    [moderatedListings, periods, staffNames]
   );
 
   // All-time average approve delay per moderator (submitted -> approved).

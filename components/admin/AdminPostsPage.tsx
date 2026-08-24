@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2, MapPin, Pencil, Save, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/listing-service";
 import { buildPostSerialMap } from "@/lib/post-serial";
 import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY } from "@/lib/staff-names";
 import {
   formatDurationMs,
   formatListingLocation,
@@ -73,6 +75,11 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
 
   const canApprove = canModerate(role);
 
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToAllListingsForAdmin((nextListings) => {
       setListings(nextListings);
@@ -99,15 +106,16 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
 
     return listings.filter((listing) => {
       const matchesStatus = statusFilter === "all" || listing.status === statusFilter;
+      const sellerName = resolveStaffName(staffNames, listing.sellerId, listing.sellerName);
       const matchesSearch =
         !normalizedSearch ||
         listing.title.toLowerCase().includes(normalizedSearch) ||
         listing.location.toLowerCase().includes(normalizedSearch) ||
-        listing.sellerName.toLowerCase().includes(normalizedSearch);
+        sellerName.toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
     });
-  }, [listings, statusFilter, deferredSearchTerm]);
+  }, [listings, statusFilter, deferredSearchTerm, staffNames]);
 
   async function handleApprove(listing: Listing) {
     setPendingId(listing.id);
@@ -343,12 +351,13 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
                         {formatListingPrice(listing.price)}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        by {listing.sellerName || "Unknown"} · {listing.sellerPhone}
+                        by {resolveStaffName(staffNames, listing.sellerId, listing.sellerName) || "Unknown"} ·{" "}
+                        {listing.sellerPhone}
                       </p>
                       {listing.moderatedByName && listing.moderatedAtMs ? (
                         <p className="mt-0.5 text-xs text-slate-400">
                           {listing.status === "rejected" ? "Rejected" : "Approved"} by{" "}
-                          {listing.moderatedByName}
+                          {resolveStaffName(staffNames, listing.moderatedBy, listing.moderatedByName)}
                           {listing.createdAtMs
                             ? ` in ${formatDurationMs(listing.moderatedAtMs - listing.createdAtMs)}`
                             : ""}

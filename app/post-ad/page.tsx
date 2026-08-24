@@ -89,12 +89,15 @@ export default function PostAdPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purposes]);
 
-  // Keep propertyType valid whenever the category list loads or the chosen
-  // purpose changes (e.g. switching from Sale to Rent drops a sale-only type).
+  // Don't auto-pick a category — the picker starts on "All Listings"
+  // (unselected), exactly like the navbar's browse dropdown, until the
+  // person deliberately chooses one. Only clear it out if it becomes
+  // invalid (e.g. an admin renamed/removed that category while they had it
+  // selected, or they switched purpose to one it doesn't belong to).
   useEffect(() => {
     const validTypes = (categoriesByPurpose[purpose] ?? []).map((category) => category.en);
-    if (validTypes.length > 0 && !validTypes.includes(propertyType)) {
-      setPropertyType(validTypes[0]);
+    if (propertyType && !validTypes.includes(propertyType)) {
+      setPropertyType("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purpose, propertyTypeCategories]);
@@ -143,6 +146,11 @@ export default function PostAdPage() {
 
     if (!location.locationDivision || !location.locationDistrict || !location.locationUpazila) {
       setErrorMessage(t.locationRequiredError);
+      return;
+    }
+
+    if (!propertyType) {
+      setErrorMessage(t.propertyTypeRequiredError);
       return;
     }
 
@@ -268,7 +276,7 @@ export default function PostAdPage() {
                     purpose={purpose}
                     propertyType={propertyType}
                     language={language}
-                    placeholder={t.propertyType}
+                    placeholder={t.allListings}
                     onChange={(nextPurpose, nextPropertyType) => {
                       setPurpose(nextPurpose as ListingPurpose);
                       setPropertyType(nextPropertyType);

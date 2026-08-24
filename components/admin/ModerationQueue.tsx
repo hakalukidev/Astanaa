@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2, MapPin, Pencil, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ import {
   type ListingStatus,
 } from "@/lib/listings";
 import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
+import { fetchStaffNames, resolveStaffName, STAFF_NAMES_QUERY_KEY } from "@/lib/staff-names";
 import { cn } from "@/lib/utils";
 
 const TABS: { value: ListingStatus; label: string }[] = [
@@ -56,6 +58,11 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [locationDraft, setLocationDraft] = useState<LocationCascadeValue | null>(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  const { data: staffNames = {} } = useQuery({
+    queryKey: STAFF_NAMES_QUERY_KEY,
+    queryFn: fetchStaffNames,
+  });
 
   useEffect(() => {
     setIsLoading(true);
@@ -241,12 +248,13 @@ export default function ModerationQueue({ role, adminUid, adminName }: Moderatio
                         {formatListingPrice(listing.price)}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        by {listing.sellerName || "Unknown"} · {listing.sellerPhone}
+                        by {resolveStaffName(staffNames, listing.sellerId, listing.sellerName) || "Unknown"} ·{" "}
+                        {listing.sellerPhone}
                       </p>
                       {listing.moderatedByName && listing.moderatedAtMs ? (
                         <p className="mt-0.5 text-xs text-slate-400">
                           {listing.status === "rejected" ? "Rejected" : "Approved"} by{" "}
-                          {listing.moderatedByName}
+                          {resolveStaffName(staffNames, listing.moderatedBy, listing.moderatedByName)}
                           {listing.createdAtMs
                             ? ` in ${formatDurationMs(listing.moderatedAtMs - listing.createdAtMs)}`
                             : ""}

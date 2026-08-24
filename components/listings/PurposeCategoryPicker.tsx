@@ -32,7 +32,7 @@ export default function PurposeCategoryPicker({
   placeholder: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(purpose || null);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,20 +50,21 @@ export default function PurposeCategoryPicker({
     (category) => category.en === propertyType
   );
 
-  const TriggerIcon = selectedCategory
-    ? getPropertyTypeIcon(selectedCategory.icon)
-    : selectedPurpose
-      ? getPropertyTypeIcon(selectedPurpose.icon)
-      : LayoutGrid;
+  // Nothing counts as "selected" — and the trigger stays on the neutral
+  // "All Listings" icon/label, same as the navbar's browse dropdown — until
+  // both a purpose and a category have actually been chosen together.
+  const hasSelection = Boolean(selectedPurpose && selectedCategory);
 
-  const triggerLabel = selectedPurpose && selectedCategory
-    ? `${language === "bn" ? selectedPurpose.bn : selectedPurpose.en} · ${
-        language === "bn" ? selectedCategory.bn : selectedCategory.en
+  const TriggerIcon = hasSelection ? getPropertyTypeIcon(selectedCategory!.icon) : LayoutGrid;
+
+  const triggerLabel = hasSelection
+    ? `${language === "bn" ? selectedPurpose!.bn : selectedPurpose!.en} · ${
+        language === "bn" ? selectedCategory!.bn : selectedCategory!.en
       }`
     : placeholder;
 
   function openMenu() {
-    setExpandedGroup(purpose || null);
+    setExpandedGroup(hasSelection ? purpose : null);
     setIsOpen(true);
   }
 
@@ -76,6 +77,14 @@ export default function PurposeCategoryPicker({
     setIsOpen(false);
   }
 
+  // Mirrors the navbar dropdown's "All Listings" row — here it just clears
+  // back to the unselected state rather than navigating anywhere, since
+  // posting always needs one specific category picked before submit.
+  function handleClearSelection() {
+    onChange(purpose, "");
+    setIsOpen(false);
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -85,7 +94,7 @@ export default function PurposeCategoryPicker({
       >
         <span className="flex min-w-0 items-center gap-2">
           <TriggerIcon size={15} className="shrink-0 text-gray-500" />
-          <span className={`truncate ${selectedCategory ? "text-gray-900" : "text-gray-400"}`}>
+          <span className={`truncate ${hasSelection ? "text-gray-900" : "text-gray-400"}`}>
             {triggerLabel}
           </span>
         </span>
@@ -97,6 +106,16 @@ export default function PurposeCategoryPicker({
 
       {isOpen ? (
         <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[280px] rounded-md border border-gray-200 bg-white py-2 shadow-lg">
+          <button
+            type="button"
+            onClick={handleClearSelection}
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-brand-mint/15 hover:text-brand-navy"
+          >
+            <LayoutGrid size={15} className="shrink-0" />
+            {placeholder}
+          </button>
+          <div className="my-1 border-t border-gray-100" />
+
           {purposes.map((purposeRecord) => {
             const GroupIcon = getPropertyTypeIcon(purposeRecord.icon);
             const isExpanded = expandedGroup === purposeRecord.key;
