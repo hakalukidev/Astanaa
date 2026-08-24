@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import {
   formatListingPostedAt,
   formatListingPrice,
@@ -28,13 +27,10 @@ export default function ListingCard({ listing }: ListingCardProps) {
   const t = translations[language].listings;
   const photoUrl = getPrimaryListingPhotoUrl(listing);
   const isBoosted = listing.boost.status === "active";
-  const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
 
-  useEffect(() => subscribeToListingPurposes(setPurposes), []);
   useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
 
-  const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
   const propertyTypeLabel = getPropertyTypeLabel(propertyTypeCategories, listing.propertyType, language);
 
   return (
@@ -63,9 +59,6 @@ export default function ListingCard({ listing }: ListingCardProps) {
         ) : null}
 
         <div className="absolute right-2 top-2 flex max-w-[70%] flex-col items-end gap-1">
-          <span className="max-w-full truncate rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
-            {purposeLabel}
-          </span>
           <span className="max-w-full truncate rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700 shadow">
             {propertyTypeLabel}
           </span>

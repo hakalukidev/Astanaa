@@ -15,15 +15,17 @@ import {
   Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import BoostListingDialog from "@/components/listings/BoostListingDialog";
+import ListingCard from "@/components/listings/ListingCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { createBuyRequest } from "@/lib/buy-requests";
 import { getOrCreateChat } from "@/lib/chat";
+import { getLastSearchedLocation } from "@/lib/last-searched-location";
 import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { deleteListing } from "@/lib/listing-service";
 import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
@@ -36,11 +38,14 @@ import {
 import { buildGoogleMapsEmbedSrc } from "@/lib/map-link";
 import { translations } from "@/lib/site-translations";
 
+const MAX_RECOMMENDED_LISTINGS = 10;
+
 type ListingDetailClientProps = {
   listing: Listing;
+  otherListings?: Listing[];
 };
 
-export default function ListingDetailClient({ listing }: ListingDetailClientProps) {
+export default function ListingDetailClient({ listing, otherListings = [] }: ListingDetailClientProps) {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -49,17 +54,52 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   const tListings = translations[language].listings;
 
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const [isBuySubmitting, setIsBuySubmitting] = useState(false);
   const [isChatSubmitting, setIsChatSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [buyRequestSent, setBuyRequestSent] = useState(false);
   const [boostDialogOpen, setBoostDialogOpen] = useState(false);
   const [boostStatus, setBoostStatus] = useState(listing.boost.status);
   const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+  const [lastSearchedLocation, setLastSearchedLocationState] = useState<string | null>(null);
 
   useEffect(() => subscribeToListingPurposes(setPurposes), []);
 
+  // Read once on mount — localStorage isn't available during SSR, so this
+  // can't be computed alongside the other derived values below.
+  useEffect(() => {
+    setLastSearchedLocationState(getLastSearchedLocation());
+  }, []);
+
   const purposeLabel = getListingPurposeLabel(purposes, listing.purpose, language);
+
+  const otherActiveListings = useMemo(
+    () => otherListings.filter((candidate) => candidate.id !== listing.id),
+    [otherListings, listing.id]
+  );
+
+  // Same sub-category (propertyType) as this listing — e.g. other
+  // "Apartment" posts, regardless of location.
+  const similarListings = useMemo(
+    () =>
+      otherActiveListings
+        .filter((candidate) => candidate.propertyType === listing.propertyType)
+        .slice(0, MAX_RECOMMENDED_LISTINGS),
+    [otherActiveListings, listing.propertyType]
+  );
+
+  // Other posts from the location the visitor last searched/filtered by
+  // (e.g. picked in the TopBar) before landing here — not necessarily this
+  // listing's own location.
+  const locationRecommendedListings = useMemo(() => {
+    if (!lastSearchedLocation) {
+      return [];
+    }
+
+    const normalizedLocation = lastSearchedLocation.toLowerCase();
+
+    return otherActiveListings
+      .filter((candidate) => candidate.location.toLowerCase().includes(normalizedLocation))
+      .slice(0, MAX_RECOMMENDED_LISTINGS);
+  }, [otherActiveListings, lastSearchedLocation]);
 
   // Prefer the seller's pinned Google Maps link (exact building) over a
   // guessed embed built from the free-text location — falls back to that
@@ -76,39 +116,6 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
   function requireLogin() {
     toast({ title: t.loginRequiredTitle, description: t.loginRequiredDesc });
     router.push(`/login?next=/listings/${listing.id}`);
-  }
-
-  async function handleBuy() {
-    if (!user) {
-      requireLogin();
-      return;
-    }
-
-    setIsBuySubmitting(true);
-
-    try {
-      await createBuyRequest({
-        listingId: listing.id,
-        listingTitle: listing.title,
-        buyerId: user.uid,
-        buyerName: profile?.name || user.displayName || "Astanaa user",
-        buyerPhone: profile?.phone || "",
-        sellerId: listing.sellerId,
-      });
-      setBuyRequestSent(true);
-      toast({
-        title: t.buyRequestSentTitle,
-        description: t.buyRequestSentDesc,
-      });
-    } catch {
-      toast({
-        title: t.genericErrorTitle,
-        description: t.buyErrorDesc,
-        variant: "destructive",
-      });
-    } finally {
-      setIsBuySubmitting(false);
-    }
   }
 
   async function handleChat() {
@@ -320,7 +327,7 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
                   rel="noopener noreferrer"
                   className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
                 >
-                  <MessageCircle size={14} /> {listing.sellerWhatsapp}
+                  <WhatsAppIcon size={14} /> {listing.sellerWhatsapp}
                 </a>
               ) : null}
               {listing.sellerEmail ? (
@@ -335,20 +342,9 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
               {!isOwner ? (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <Button
-                    onClick={handleBuy}
-                    disabled={isBuySubmitting || buyRequestSent}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    {isBuySubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    {buyRequestSent ? t.requestSent : t.buy}
-                  </Button>
-                  <Button
                     onClick={handleChat}
                     disabled={isChatSubmitting}
-                    variant="outline"
-                    className="flex-1 border-green-600 text-green-700 hover:bg-green-50"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     {isChatSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -392,6 +388,30 @@ export default function ListingDetailClient({ listing }: ListingDetailClientProp
             </div>
           </div>
         </div>
+
+        {locationRecommendedListings.length > 0 ? (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {t.recommendedIn} {lastSearchedLocation}
+            </h2>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {locationRecommendedListings.map((recommended) => (
+                <ListingCard key={recommended.id} listing={recommended} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {similarListings.length > 0 ? (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold text-gray-900">{t.similarListings}</h2>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {similarListings.map((similar) => (
+                <ListingCard key={similar.id} listing={similar} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <BoostListingDialog

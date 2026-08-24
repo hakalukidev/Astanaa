@@ -6,6 +6,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import ListingCard from "@/components/listings/ListingCard";
 import PriceFilterDropdown, { type PriceRange } from "@/components/listings/PriceFilterDropdown";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { setLastSearchedLocation } from "@/lib/last-searched-location";
 import { matchesPriceBand, type Listing, type ListingPurpose } from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
@@ -46,9 +47,17 @@ export default function ListingsCatalogClient({
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
-    setSearchTerm(searchParams?.get("search")?.trim() ?? "");
+    const nextSearchTerm = searchParams?.get("search")?.trim() ?? "";
+    setSearchTerm(nextSearchTerm);
     setSelectedType(searchParams?.get("type")?.trim() ?? "all");
     setSelectedPurpose((searchParams?.get("purpose") as ListingPurpose | null) ?? "all");
+
+    // The TopBar location picker (and shared "?search=..." links) land here
+    // with the picked location's name in `search` — remember it so the
+    // listing detail page can recommend other posts from that same area.
+    if (nextSearchTerm) {
+      setLastSearchedLocation(nextSearchTerm);
+    }
   }, [searchParams]);
 
   // Everything except the price filter — reused both to filter the grid and to
