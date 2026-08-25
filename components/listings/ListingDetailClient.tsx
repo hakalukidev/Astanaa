@@ -183,13 +183,17 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
         {/*
           Always a 2-column grid (gallery+description+map on the left, the
           info/seller cards on the right) — same arrangement at every screen
-          width, no mobile-only stacking. Each section is its own grid item
-          with an explicit `order-*` + `col-start-*` pinning it to its column
-          and vertical position.
+          width, no mobile-only stacking. Every item gets an explicit
+          `col-start-*` AND `row-start-*` (not just `order-*`) — CSS Grid's
+          auto-placement cursor only moves forward, so with col-1 items
+          (gallery, description, map) appearing before the col-2 info card
+          in source order, an `order`-only placement pushed the info card
+          down to whatever row the cursor had already reached in col-1
+          instead of row 1 next to the gallery. Explicit rows sidestep that.
         */}
         <div className="grid gap-8 grid-cols-[1.4fr_1fr]">
           {/* Gallery */}
-          <div className="order-1 col-start-1">
+          <div className="col-start-1 row-start-1">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
               {photos[activePhotoIndex] ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -221,7 +225,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {/* Info card — price / title / tags / location / posted-at */}
-          <div className="order-4 col-start-2 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="col-start-2 row-start-1 rounded-xl border border-gray-200 bg-white p-5">
             {isOwner && listing.status !== "active" && listing.status !== "sold" ? (
               <div
                 className={`mb-3 rounded-md px-3 py-2 text-xs font-semibold ${
@@ -289,7 +293,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {/* Description */}
-          <div className="order-2 col-start-1 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="col-start-1 row-start-2 rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="text-lg font-semibold text-gray-900">{t.description}</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-600">
               {listing.description}
@@ -297,7 +301,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {mapEmbedSrc || listing.locationMapUrl || listing.location ? (
-            <div className="order-3 col-start-1 rounded-xl border border-gray-200 bg-white p-5">
+            <div className="col-start-1 row-start-3 rounded-xl border border-gray-200 bg-white p-5">
               <h2 className="text-lg font-semibold text-gray-900">{t.mapTitle}</h2>
               {mapEmbedSrc ? (
                 <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg border border-gray-100">
@@ -325,7 +329,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           ) : null}
 
           {/* Seller card */}
-          <div className="order-5 col-start-2 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="col-start-2 row-start-2 rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
               {t.seller}
             </h2>
