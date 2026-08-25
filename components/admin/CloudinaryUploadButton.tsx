@@ -21,6 +21,20 @@ type CloudinaryUploadResponse = {
 };
 
 const ACCEPTED_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+// Some browser/OS combos (seen on Linux especially) fail to report a
+// correct file.type for a perfectly valid .jpg — it comes back as "" or
+// something generic, which would fail the MIME check below and reject a
+// real JPG. Fall back to the extension so that edge case isn't rejected.
+const ACCEPTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp"];
+
+function isAcceptedImage(file: File) {
+  if (ACCEPTED_FILE_TYPES.includes(file.type)) {
+    return true;
+  }
+
+  const name = file.name.toLowerCase();
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
 
 export default function CloudinaryUploadButton({
   disabled,
@@ -44,7 +58,7 @@ export default function CloudinaryUploadButton({
       return;
     }
 
-    if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
+    if (!isAcceptedImage(file)) {
       toast({
         title: "Unsupported image",
         description: "Please choose a PNG, JPG, JPEG, or WEBP image.",
@@ -117,7 +131,7 @@ export default function CloudinaryUploadButton({
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED_FILE_TYPES.join(",")}
+        accept={[...ACCEPTED_FILE_TYPES, ...ACCEPTED_EXTENSIONS].join(",")}
         className="sr-only"
         onChange={handleFileChange}
       />

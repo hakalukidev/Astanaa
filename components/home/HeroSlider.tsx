@@ -2,7 +2,6 @@
 
 import { getAllSlides } from "@/lib/slide-service";
 import { type Slide } from "@/lib/slides";
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export default function HeroSlider() {
@@ -79,16 +78,9 @@ export default function HeroSlider() {
         </div>
 
         <div className="order-3 flex w-full flex-col justify-center px-4 py-6 sm:px-6 sm:py-8 md:order-2 md:w-72 md:px-10 md:py-12 lg:w-80">
-          <span className="mb-3 text-sm font-semibold text-blue-600">{activeSlide.tag}</span>
-          <h2 className="text-2xl font-black leading-tight text-gray-900 sm:text-3xl">
+          <h2 className="text-base font-black leading-tight text-gray-900 sm:text-lg">
             {activeSlide.title}
           </h2>
-          <Link
-            href={activeSlide.ctaHref}
-            className="mt-5 inline-flex text-xs font-bold tracking-widest text-gray-900 underline underline-offset-4 transition hover:text-blue-600"
-          >
-            {activeSlide.cta}
-          </Link>
         </div>
       </div>
     </section>
