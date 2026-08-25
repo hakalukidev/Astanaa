@@ -181,17 +181,23 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
     <main className="bg-gray-50 py-8">
       <div className="mx-auto max-w-6xl px-4">
         {/*
-          Always a 2-column grid (gallery+description+map on the left, the
-          info/seller cards on the right) — same arrangement at every screen
-          width, no mobile-only stacking. Every item gets an explicit
-          `col-start-*` AND `row-start-*` (not just `order-*`) — CSS Grid's
-          auto-placement cursor only moves forward, so with col-1 items
-          (gallery, description, map) appearing before the col-2 info card
-          in source order, an `order`-only placement pushed the info card
-          down to whatever row the cursor had already reached in col-1
-          instead of row 1 next to the gallery. Explicit rows sidestep that.
+          Always a 2-column grid (gallery+description+map on the left, one
+          combined info+seller card on the right) — same arrangement at
+          every screen width, no mobile-only stacking. Every item gets an
+          explicit `col-start-*` AND `row-start-*` (not just `order-*`) —
+          CSS Grid's auto-placement cursor only moves forward, so with col-1
+          items (gallery, description, map) appearing before the col-2 card
+          in source order, an `order`-only placement pushed it down to
+          whatever row the cursor had already reached in col-1 instead of
+          row 1 next to the gallery. Explicit rows sidestep that.
+
+          `items-start` keeps every card at its own natural height instead
+          of the grid's default stretch-to-match-the-row behavior — without
+          it, the (usually much shorter) right-column card would stretch
+          down to match the gallery's height, leaving a slab of empty space
+          inside its own border.
         */}
-        <div className="grid gap-8 grid-cols-[1.4fr_1fr]">
+        <div className="grid items-start gap-8 grid-cols-[1.4fr_1fr]">
           {/* Gallery */}
           <div className="col-start-1 row-start-1">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
@@ -290,6 +296,87 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
                 {listing.areaSqft ?? "-"} {tListings.sqft}
               </div>
             </div>
+
+            {/* Seller */}
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                {t.seller}
+              </h2>
+              <p className="mt-1 text-base font-semibold text-gray-900">{listing.sellerName}</p>
+              {listing.sellerPhone ? (
+                <a
+                  href={`tel:${listing.sellerPhone}`}
+                  className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
+                >
+                  <Phone size={14} /> {listing.sellerPhone}
+                </a>
+              ) : null}
+              {listing.sellerWhatsapp ? (
+                <a
+                  href={`https://wa.me/${listing.sellerWhatsapp.replace(/[^0-9]/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
+                >
+                  <WhatsAppIcon size={14} /> {listing.sellerWhatsapp}
+                </a>
+              ) : null}
+              {listing.sellerEmail ? (
+                <a
+                  href={`mailto:${listing.sellerEmail}`}
+                  className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
+                >
+                  <Mail size={14} /> {listing.sellerEmail}
+                </a>
+              ) : null}
+
+              {!isOwner ? (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleChat}
+                    disabled={isChatSubmitting}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    {isChatSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                    )}
+                    {t.chat}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs text-gray-500">{t.yourListingNotice}</p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {boostStatus === "none" || boostStatus === "expired" ? (
+                      <Button
+                        onClick={() => setBoostDialogOpen(true)}
+                        className="flex-1 bg-amber-500 hover:bg-amber-600"
+                      >
+                        <Zap className="mr-2 h-4 w-4" /> {t.boostButton}
+                      </Button>
+                    ) : (
+                      <p className="flex-1 rounded-md bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700">
+                        {boostStatus === "pending" ? t.boostPending : t.boostActive}
+                      </p>
+                    )}
+                    <Button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      variant="outline"
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Description */}
@@ -327,87 +414,6 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
               ) : null}
             </div>
           ) : null}
-
-          {/* Seller card */}
-          <div className="col-start-2 row-start-2 rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-              {t.seller}
-            </h2>
-            <p className="mt-1 text-base font-semibold text-gray-900">{listing.sellerName}</p>
-            {listing.sellerPhone ? (
-              <a
-                href={`tel:${listing.sellerPhone}`}
-                className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
-              >
-                <Phone size={14} /> {listing.sellerPhone}
-              </a>
-            ) : null}
-            {listing.sellerWhatsapp ? (
-              <a
-                href={`https://wa.me/${listing.sellerWhatsapp.replace(/[^0-9]/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
-              >
-                <WhatsAppIcon size={14} /> {listing.sellerWhatsapp}
-              </a>
-            ) : null}
-            {listing.sellerEmail ? (
-              <a
-                href={`mailto:${listing.sellerEmail}`}
-                className="mt-1 flex items-center gap-1.5 text-sm text-green-700 hover:underline"
-              >
-                <Mail size={14} /> {listing.sellerEmail}
-              </a>
-            ) : null}
-
-            {!isOwner ? (
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  onClick={handleChat}
-                  disabled={isChatSubmitting}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  {isChatSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                  )}
-                  {t.chat}
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500">{t.yourListingNotice}</p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  {boostStatus === "none" || boostStatus === "expired" ? (
-                    <Button
-                      onClick={() => setBoostDialogOpen(true)}
-                      className="flex-1 bg-amber-500 hover:bg-amber-600"
-                    >
-                      <Zap className="mr-2 h-4 w-4" /> {t.boostButton}
-                    </Button>
-                  ) : (
-                    <p className="flex-1 rounded-md bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700">
-                      {boostStatus === "pending" ? t.boostPending : t.boostActive}
-                    </p>
-                  )}
-                  <Button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    variant="outline"
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    {isDeleting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {locationRecommendedListings.length > 0 ? (
