@@ -42,12 +42,12 @@ export async function verifyCaptcha(
     return { ok: false, error: "Please complete the captcha." };
   }
 
-  const body = new URLSearchParams({ secret: getSecretKey(), response: token });
-  if (remoteIp) {
-    body.set("remoteip", remoteIp);
-  }
-
   try {
+    const body = new URLSearchParams({ secret: getSecretKey(), response: token });
+    if (remoteIp) {
+      body.set("remoteip", remoteIp);
+    }
+
     const response = await fetch(VERIFY_URL, { method: "POST", body });
     const data = (await response.json().catch(() => null)) as { success?: boolean } | null;
 
@@ -56,7 +56,11 @@ export async function verifyCaptcha(
     }
 
     return { ok: true };
-  } catch {
+  } catch (error) {
+    // Includes getSecretKey()'s "not configured for production" throw — a
+    // misconfigured TURNSTILE_SECRET_KEY should surface as a normal error
+    // response, not crash the whole request with a raw 500.
+    console.error("[captcha] verification failed:", error);
     return { ok: false, error: "Could not verify captcha. Please try again." };
   }
 }
