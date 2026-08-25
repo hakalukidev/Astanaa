@@ -444,6 +444,11 @@ export default function TopBar() {
   // given viewport) — either one being clicked should count as "inside".
   const notificationsDropdownRef = useRef<HTMLDivElement>(null);
   const mobileNotificationsDropdownRef = useRef<HTMLDivElement>(null);
+  // Same two-ref shape as the notification bell above: the mobile search
+  // toggle button and the panel it opens are separate elements, so either
+  // one being clicked should count as "inside" and not close the panel.
+  const mobileSearchButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileSearchPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -483,6 +488,11 @@ export default function TopBar() {
         mobileNotificationsDropdownRef.current?.contains(target);
       if (!isInsideNotifications) {
         setIsNotificationsOpen(false);
+      }
+      const isInsideMobileSearch =
+        mobileSearchButtonRef.current?.contains(target) || mobileSearchPanelRef.current?.contains(target);
+      if (!isInsideMobileSearch) {
+        setIsSearchOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -733,7 +743,11 @@ export default function TopBar() {
           </Link>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="p-1.5 hover:bg-white/10 rounded-full">
+            <button
+              ref={mobileSearchButtonRef}
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="p-1.5 hover:bg-white/10 rounded-full"
+            >
               <Search size={18} className="text-white" />
             </button>
             {user && (
@@ -761,7 +775,7 @@ export default function TopBar() {
         </div>
 
         {isSearchOpen && (
-          <div className="lg:hidden mt-3 space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+          <div ref={mobileSearchPanelRef} className="lg:hidden mt-3 space-y-2 rounded-lg border border-gray-200 bg-white p-3">
             <div className="relative flex w-full items-center">
               <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input

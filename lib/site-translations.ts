@@ -270,6 +270,8 @@ export const translations = {
       verifyRequiredError: "Please verify your phone number before signing up.",
       otpSendError: "Could not send the code. Please try again.",
       otpInvalid: "Incorrect or expired code.",
+      otpModalTitle: "Verify your phone number",
+      cancel: "Cancel",
     },
     forgotPassword: {
       title: "Reset your password",
@@ -628,6 +630,8 @@ export const translations = {
       verifyRequiredError: "সাইন আপ করার আগে আপনার ফোন নম্বর যাচাই করুন।",
       otpSendError: "কোড পাঠানো যায়নি। আবার চেষ্টা করুন।",
       otpInvalid: "ভুল অথবা মেয়াদোত্তীর্ণ কোড।",
+      otpModalTitle: "আপনার ফোন নম্বর যাচাই করুন",
+      cancel: "বাতিল",
     },
     forgotPassword: {
       title: "পাসওয়ার্ড রিসেট করুন",

@@ -1,13 +1,15 @@
 'use client';
 
-import { fallbackSlides } from "@/lib/home-data";
 import { getAllSlides } from "@/lib/slide-service";
 import { type Slide } from "@/lib/slides";
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export default function HeroSlider() {
-  const [slides, setSlides] = useState<Slide[]>(fallbackSlides);
+  // Starts empty (not some hardcoded placeholder) — the section renders
+  // nothing until real slides arrive, so there's no flash of stale/fallback
+  // images on reload before Firestore's actual slides show up.
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -15,12 +17,9 @@ export default function HeroSlider() {
       try {
         const nextSlides = await getAllSlides();
         const activeSlides = nextSlides.filter((slide) => slide.isActive && slide.image);
-
-        if (activeSlides.length > 0) {
-          setSlides(activeSlides);
-        }
+        setSlides(activeSlides);
       } catch {
-        setSlides(fallbackSlides);
+        setSlides([]);
       }
     }
 

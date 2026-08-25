@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -8,6 +8,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Captcha, type CaptchaPayload } from "@/components/auth/Captcha";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,9 +23,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { translations } from "@/lib/site-translations";
 import { getTermsAndConditions } from "@/lib/terms";
-
-type OtpChannel = "email" | "phone";
-type OtpStage = "idle" | "sent" | "verified";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -37,21 +42,18 @@ export default function SignUpPage() {
   const [termsContent, setTermsContent] = useState("");
   const [isTermsLoading, setIsTermsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Signup-verification OTP: always sent to the phone number (email is
-  // still required as a contact field, but no OTP goes there) — and the
-  // "Create account" button stays locked until that code is verified.
+  // Signup-verification OTP: filling the form (including the captcha) and
+  // pressing "Sign up" is what sends the code — it's only after that click
+  // that a modal opens asking for it. Verifying the code in that modal is
+  // also what actually creates the account, so a success there goes
+  // straight to the home page.
   const [captchaToken, setCaptchaToken] = useState<CaptchaPayload | null>(null);
-  const [otpStage, setOtpStage] = useState<OtpStage>("idle");
-  const [otpCode, setOtpCode] = useState("");
-  const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
-  const [otpError, setOtpError] = useState("");
   const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-
-  const channel: OtpChannel = "phone";
-  const contactValue = phone;
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     setIsTermsLoading(true);
@@ -60,84 +62,35 @@ export default function SignUpPage() {
       .finally(() => setIsTermsLoading(false));
   }, [language]);
 
-  function resetOtpState() {
-    setOtpStage("idle");
-    setOtpCode("");
-    setVerifiedToken(null);
+  async function sendSignupOtp() {
     setOtpError("");
-  }
-
-  function handlePhoneChange(value: string) {
-    setPhone(value);
-    if (otpStage !== "idle") resetOtpState();
-  }
-
-  function handleEmailChange(value: string) {
-    setEmail(value);
-  }
-
-  async function handleSendCode() {
-    setOtpError("");
-
-    if (!contactValue.trim() || !captchaToken) {
-      setOtpError(t.otpSendError);
-      return;
-    }
-
     setIsSendingCode(true);
 
     try {
       const response = await fetch("/api/auth/otp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: contactValue, channel, captchaToken }),
+        body: JSON.stringify({ identifier: phone, channel: "phone", captchaToken }),
       });
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
 
       if (!response.ok) {
-        setOtpError(data?.error ?? t.otpSendError);
+        setErrorMessage(data?.error ?? t.otpSendError);
         return;
       }
 
-      setOtpStage("sent");
       setOtpCode("");
+      setIsOtpModalOpen(true);
     } catch {
-      setOtpError(t.otpSendError);
+      setErrorMessage(t.otpSendError);
     } finally {
       setIsSendingCode(false);
     }
   }
 
-  async function handleVerifyCode() {
-    setOtpError("");
-    setIsVerifyingCode(true);
-
-    try {
-      const response = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: contactValue, channel, code: otpCode }),
-      });
-      const data = (await response.json().catch(() => null)) as
-        | { error?: string; verifiedToken?: string }
-        | null;
-
-      if (!response.ok || !data?.verifiedToken) {
-        setOtpError(data?.error ?? t.otpInvalid);
-        return;
-      }
-
-      setVerifiedToken(data.verifiedToken);
-      setOtpStage("verified");
-    } catch {
-      setOtpError(t.otpInvalid);
-    } finally {
-      setIsVerifyingCode(false);
-    }
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setErrorMessage("");
 
     if (password !== confirmPassword) {
       setErrorMessage(t.passwordMismatch);
@@ -149,21 +102,46 @@ export default function SignUpPage() {
       return;
     }
 
-    if (otpStage !== "verified" || !verifiedToken) {
-      setErrorMessage(t.verifyRequiredError);
+    if (!captchaToken) {
+      setErrorMessage(t.otpSendError);
       return;
     }
 
-    setErrorMessage("");
-    setIsSubmitting(true);
+    await sendSignupOtp();
+  }
+
+  async function handleVerifyAndCreateAccount() {
+    setOtpError("");
+    setIsVerifying(true);
 
     try {
+      const verifyResponse = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: phone, channel: "phone", code: otpCode }),
+      });
+      const verifyData = (await verifyResponse.json().catch(() => null)) as
+        | { error?: string; verifiedToken?: string }
+        | null;
+
+      if (!verifyResponse.ok || !verifyData?.verifiedToken) {
+        setOtpError(verifyData?.error ?? t.otpInvalid);
+        return;
+      }
+
       await signUp({ name, phone, email, password });
       toast({ title: t.accountCreatedTitle, description: t.accountCreatedDesc });
+      setIsOtpModalOpen(false);
       router.replace("/");
       router.refresh();
     } catch (error) {
       const code = (error as { code?: string })?.code ?? "";
+
+      // The code was already verified at this point — a failure past here
+      // is about the account fields (email taken, weak password), not the
+      // phone, so close the modal and surface it on the main form instead
+      // of leaving an error sitting under an already-consumed OTP input.
+      setIsOtpModalOpen(false);
 
       if (code === "auth/email-already-in-use") {
         setErrorMessage(t.emailInUse);
@@ -175,7 +153,7 @@ export default function SignUpPage() {
         setErrorMessage(t.genericError);
       }
     } finally {
-      setIsSubmitting(false);
+      setIsVerifying(false);
     }
   }
 
@@ -200,6 +178,7 @@ export default function SignUpPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder={t.fullNamePlaceholder}
+                disabled={isOtpModalOpen}
                 required
               />
             </div>
@@ -209,9 +188,9 @@ export default function SignUpPage() {
                 id="phone"
                 type="tel"
                 value={phone}
-                onChange={(event) => handlePhoneChange(event.target.value)}
+                onChange={(event) => setPhone(event.target.value)}
                 placeholder="01XXXXXXXXX"
-                disabled={otpStage === "verified"}
+                disabled={isOtpModalOpen}
                 required
               />
             </div>
@@ -221,8 +200,9 @@ export default function SignUpPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(event) => handleEmailChange(event.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
+                disabled={isOtpModalOpen}
                 required
               />
             </div>
@@ -236,6 +216,7 @@ export default function SignUpPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={t.passwordPlaceholder}
                   minLength={6}
+                  disabled={isOtpModalOpen}
                   required
                   className="pr-10"
                 />
@@ -259,6 +240,7 @@ export default function SignUpPage() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder={t.confirmPasswordPlaceholder}
                   minLength={6}
+                  disabled={isOtpModalOpen}
                   required
                   className="pr-10"
                 />
@@ -273,70 +255,7 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded-md border border-gray-200 p-3">
-              {otpStage === "verified" ? (
-                <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-green-600">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  {t.verifiedBadge} · {contactValue}
-                  <button
-                    type="button"
-                    onClick={resetOtpState}
-                    className="ml-1 text-xs font-normal text-gray-500 hover:underline"
-                  >
-                    {t.changeContact}
-                  </button>
-                </p>
-              ) : (
-                <>
-                  <Captcha label={t.captchaLabel} onChange={setCaptchaToken} />
-
-                  {otpStage === "idle" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleSendCode}
-                      disabled={isSendingCode}
-                    >
-                      {isSendingCode ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {isSendingCode ? t.sendingCode : t.sendCode}
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">
-                        {t.codeSentTo} {contactValue}
-                      </p>
-                      <div className="flex gap-2">
-                        <Input
-                          value={otpCode}
-                          onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
-                          placeholder={t.codePlaceholder}
-                          inputMode="numeric"
-                          maxLength={6}
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleVerifyCode}
-                          disabled={isVerifyingCode || otpCode.length < 4}
-                        >
-                          {isVerifyingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t.verifyCode}
-                        </Button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSendCode}
-                        disabled={isSendingCode}
-                        className="text-xs font-medium text-green-600 hover:underline disabled:opacity-50"
-                      >
-                        {t.resendCode}
-                      </button>
-                    </div>
-                  )}
-
-                  {otpError ? <p className="text-xs font-medium text-red-600">{otpError}</p> : null}
-                </>
-              )}
-            </div>
+            <Captcha label={t.captchaLabel} onChange={setCaptchaToken} />
 
             <div className="space-y-2">
               <Label>{t.termsTitle}</Label>
@@ -355,6 +274,7 @@ export default function SignUpPage() {
                   type="checkbox"
                   checked={agreedToTerms}
                   onChange={(event) => setAgreedToTerms(event.target.checked)}
+                  disabled={isOtpModalOpen}
                   className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
                 />
                 {t.termsCheckboxLabel}
@@ -368,10 +288,10 @@ export default function SignUpPage() {
             <Button
               type="submit"
               className="w-full bg-green-600 hover:bg-green-700"
-              disabled={isSubmitting || !agreedToTerms || otpStage !== "verified"}
+              disabled={isSendingCode || isOtpModalOpen}
             >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {t.submit}
+              {isSendingCode ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isSendingCode ? t.sendingCode : t.submit}
             </Button>
           </form>
 
@@ -383,6 +303,57 @@ export default function SignUpPage() {
           </p>
         </CardContent>
       </Card>
+
+      <Dialog open={isOtpModalOpen} onOpenChange={(open) => !isVerifying && setIsOtpModalOpen(open)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t.otpModalTitle}</DialogTitle>
+            <DialogDescription>
+              {t.codeSentTo} {phone}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Input
+              value={otpCode}
+              onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
+              placeholder={t.codePlaceholder}
+              inputMode="numeric"
+              maxLength={6}
+              autoFocus
+            />
+            {otpError ? <p className="text-xs font-medium text-red-600">{otpError}</p> : null}
+            <button
+              type="button"
+              onClick={sendSignupOtp}
+              disabled={isSendingCode || isVerifying}
+              className="text-xs font-medium text-green-600 hover:underline disabled:opacity-50"
+            >
+              {isSendingCode ? t.sendingCode : t.resendCode}
+            </button>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOtpModalOpen(false)}
+              disabled={isVerifying}
+            >
+              {t.cancel}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleVerifyAndCreateAccount}
+              disabled={isVerifying || otpCode.length < 4}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isVerifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t.verifyCode}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

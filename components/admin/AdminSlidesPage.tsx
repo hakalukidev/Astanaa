@@ -26,7 +26,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { fallbackSlides } from "@/lib/home-data";
 import { deleteManagedSlideImage } from "@/lib/slide-image-service";
 import { createSlide, deleteSlide, getAllSlides, updateSlide } from "@/lib/slide-service";
 import { sortSlides, type Slide, type SlideInput } from "@/lib/slides";
@@ -52,7 +51,10 @@ function createEmptyFormValues(nextOrder: number): SlideFormValues {
 }
 
 export default function AdminSlidesPage() {
-  const [slides, setSlides] = useState<SlideRow[]>(() => sortSlides(fallbackSlides));
+  // Starts empty (not some hardcoded placeholder) — the table shows nothing
+  // but the "Loading slides..." row until the real slides arrive, instead
+  // of flashing 4 stale fallback rows first.
+  const [slides, setSlides] = useState<SlideRow[]>([]);
   const [editingSlide, setEditingSlide] = useState<SlideRow | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoadingSlides, setIsLoadingSlides] = useState(true);
@@ -69,19 +71,14 @@ export default function AdminSlidesPage() {
     async function loadSlides() {
       try {
         const nextSlides = await getAllSlides();
-
-        if (nextSlides.length > 0) {
-          setSlides(nextSlides);
-        } else {
-          setSlides(sortSlides(fallbackSlides));
-        }
+        setSlides(nextSlides);
       } catch {
         toast({
           title: "Could not load slides",
-          description: "Showing fallback slides for now.",
+          description: "Please refresh and try again.",
           variant: "destructive",
         });
-        setSlides(sortSlides(fallbackSlides));
+        setSlides([]);
       } finally {
         setIsLoadingSlides(false);
       }
@@ -266,7 +263,11 @@ export default function AdminSlidesPage() {
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading slides...
             </div>
-          ) : null}
+          ) : slides.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center text-sm text-slate-500">
+              No slides yet — click &quot;Add Slide&quot; to create one.
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -334,6 +335,7 @@ export default function AdminSlidesPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 
