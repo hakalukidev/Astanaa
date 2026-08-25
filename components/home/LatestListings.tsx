@@ -70,11 +70,11 @@ export default function LatestListings({ listings }: LatestListingsProps) {
   }
 
   return (
-    <section className="border-t border-slate-200 bg-[#f5f4ef] pb-14 pt-6">
+    <section className="border-t border-slate-200 bg-[#f5f4ef] pb-14 pt-1.5">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-5 border-b border-slate-200 pb-1.5 md:flex-row md:items-end md:justify-between">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-            Latest Listings
+            {t.latestHeading}
           </h2>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -105,9 +105,9 @@ export default function LatestListings({ listings }: LatestListingsProps) {
         </div>
 
         {sortedListings.length === 0 ? (
-          <p className="mt-8 py-8 text-center text-sm text-slate-500">{t.noResults}</p>
+          <p className="mt-3 py-8 text-center text-sm text-slate-500">{t.noResults}</p>
         ) : (
-          <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
+          <div className="mt-3 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
             {sortedListings.slice(0, 10).map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
