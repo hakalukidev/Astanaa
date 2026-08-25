@@ -11,7 +11,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Astanaa.com - Buy & Sell Apartments in Bangladesh',
+  title: 'Astanaa.com - Rent & Sell Apartments in Bangladesh',
   description: 'Post your apartment for sale or rent, and find your next home on Astanaa.com.',
   icons: {
     // Versioned query string so browsers don't keep serving the old
