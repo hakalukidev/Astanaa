@@ -181,18 +181,15 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
     <main className="bg-gray-50 py-8">
       <div className="mx-auto max-w-6xl px-4">
         {/*
-          A plain 2-column grid from tablet width up (gallery+description+map
-          on the left, the info/seller cards on the right) reads top-to-bottom
-          in source order once it collapses to 1 column on phones — which used
-          to put the price/title/tags card *after* the description. Each
-          section below is its own grid item with an explicit phone-width
-          `order-*` (gallery, then info card, then description, map, seller)
-          and a `md:order-*` + `md:col-start-*` pair (md: = 768px+) that
-          reproduces the original two-column arrangement from tablet up.
+          Always a 2-column grid (gallery+description+map on the left, the
+          info/seller cards on the right) — same arrangement at every screen
+          width, no mobile-only stacking. Each section is its own grid item
+          with an explicit `order-*` + `col-start-*` pinning it to its column
+          and vertical position.
         */}
-        <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
+        <div className="grid gap-8 grid-cols-[1.4fr_1fr]">
           {/* Gallery */}
-          <div className="order-1 md:order-1 md:col-start-1">
+          <div className="order-1 col-start-1">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
               {photos[activePhotoIndex] ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -224,7 +221,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {/* Info card — price / title / tags / location / posted-at */}
-          <div className="order-2 md:order-4 md:col-start-2 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="order-4 col-start-2 rounded-xl border border-gray-200 bg-white p-5">
             {isOwner && listing.status !== "active" && listing.status !== "sold" ? (
               <div
                 className={`mb-3 rounded-md px-3 py-2 text-xs font-semibold ${
@@ -292,7 +289,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {/* Description */}
-          <div className="order-3 md:order-2 md:col-start-1 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="order-2 col-start-1 rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="text-lg font-semibold text-gray-900">{t.description}</h2>
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-600">
               {listing.description}
@@ -300,7 +297,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           </div>
 
           {mapEmbedSrc || listing.locationMapUrl || listing.location ? (
-            <div className="order-4 md:order-3 md:col-start-1 rounded-xl border border-gray-200 bg-white p-5">
+            <div className="order-3 col-start-1 rounded-xl border border-gray-200 bg-white p-5">
               <h2 className="text-lg font-semibold text-gray-900">{t.mapTitle}</h2>
               {mapEmbedSrc ? (
                 <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg border border-gray-100">
@@ -328,7 +325,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
           ) : null}
 
           {/* Seller card */}
-          <div className="order-5 md:order-5 md:col-start-2 rounded-xl border border-gray-200 bg-white p-5">
+          <div className="order-5 col-start-2 rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
               {t.seller}
             </h2>
