@@ -39,8 +39,8 @@ export default function SignUpPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Signup-verification OTP: the channel is picked automatically (phone if
-  // the user gave one, otherwise email) instead of asking again — and the
+  // Signup-verification OTP: always sent to the phone number (email is
+  // still required as a contact field, but no OTP goes there) — and the
   // "Create account" button stays locked until that code is verified.
   const [captchaToken, setCaptchaToken] = useState<CaptchaPayload | null>(null);
   const [otpStage, setOtpStage] = useState<OtpStage>("idle");
@@ -50,8 +50,8 @@ export default function SignUpPage() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
 
-  const channel: OtpChannel = phone.trim() ? "phone" : "email";
-  const contactValue = channel === "email" ? email : phone;
+  const channel: OtpChannel = "phone";
+  const contactValue = phone;
 
   useEffect(() => {
     setIsTermsLoading(true);
@@ -74,7 +74,6 @@ export default function SignUpPage() {
 
   function handleEmailChange(value: string) {
     setEmail(value);
-    if (otpStage !== "idle") resetOtpState();
   }
 
   async function handleSendCode() {
@@ -205,14 +204,15 @@ export default function SignUpPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">{t.phoneOptional}</Label>
+              <Label htmlFor="phone">{t.phone}</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={phone}
                 onChange={(event) => handlePhoneChange(event.target.value)}
                 placeholder="01XXXXXXXXX"
-                disabled={otpStage === "verified" && channel === "phone"}
+                disabled={otpStage === "verified"}
+                required
               />
             </div>
             <div className="space-y-2">
@@ -223,7 +223,6 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(event) => handleEmailChange(event.target.value)}
                 placeholder="you@example.com"
-                disabled={otpStage === "verified" && channel === "email"}
                 required
               />
             </div>

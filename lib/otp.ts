@@ -80,7 +80,10 @@ export async function sendOtp(input: {
     if (channel === "email") {
       await sendEmail(identifier, "Your Astanaa.com verification code", otpEmailHtml(code));
     } else {
-      await sendSms(toGatewayFormat(identifier), `Your Astanaa.com verification code is ${code}. It expires in 5 minutes.`);
+      // BulkSMSBD's OTP route filters on this exact "Your {Brand} OTP is
+      // XXXX" shape (their dashboard calls it out explicitly) — deviating
+      // risks the telco silently dropping it instead of delivering.
+      await sendSms(toGatewayFormat(identifier), `Your Astanaa.com OTP is ${code}. It expires in 5 minutes.`);
     }
   } catch (error) {
     await ref.delete().catch(() => undefined);
