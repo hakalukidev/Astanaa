@@ -180,7 +180,10 @@ export async function createListing(input: ListingInput) {
   });
 }
 
-export async function updateListing(id: string, input: Partial<ListingInput>) {
+export async function updateListing(
+  id: string,
+  input: Partial<ListingInput> & { status?: Listing["status"] }
+) {
   if (!db) {
     throw new Error("Listing data is not available.");
   }

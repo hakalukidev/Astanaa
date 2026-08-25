@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MessageCircle, Plus, Trash2, User as UserIcon, Zap } from "lucide-react";
+import { Loader2, MessageCircle, Pencil, Plus, Trash2, User as UserIcon, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -173,6 +173,13 @@ export default function MyListingsPage() {
                     {t.boostPending}
                   </span>
                 ) : null}
+                <Link
+                  href={`/post-ad/${listing.id}`}
+                  aria-label={t.edit}
+                  className="flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Link>
                 <button
                   type="button"
                   onClick={() => handleDelete(listing)}
