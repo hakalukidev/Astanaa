@@ -764,8 +764,12 @@ export default function TopBar() {
                 dropdownRef={mobileNotificationsDropdownRef}
               />
             )}
-            <Link href="/post-ad" className="p-1.5 hover:bg-white/10 rounded-full" aria-label="Post ad">
-              <Plus size={18} className="text-brand-mint" />
+            <Link
+              href="/post-ad"
+              className="rounded-full bg-brand-mint px-3 py-1 text-sm font-semibold text-brand-navy transition hover:brightness-95"
+              aria-label="Post ad"
+            >
+              <BilingualLabel en={translations.en.topbar.postAdShort} bn={translations.bn.topbar.postAdShort} />
             </Link>
             <LanguageToggle compact />
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1.5 hover:bg-white/10 rounded-full text-white">

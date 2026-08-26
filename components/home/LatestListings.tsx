@@ -108,7 +108,7 @@ export default function LatestListings({ listings }: LatestListingsProps) {
           <p className="mt-3 py-8 text-center text-sm text-slate-500">{t.noResults}</p>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
-            {sortedListings.slice(0, 10).map((listing) => (
+            {sortedListings.slice(0, 20).map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
