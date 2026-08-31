@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   onSnapshot,
@@ -50,6 +51,36 @@ export async function getAllListings(): Promise<Listing[]> {
   return snapshot.docs
     .map((docSnapshot) => mapListingSnapshot(docSnapshot))
     .filter((listing): listing is Listing => Boolean(listing));
+}
+
+/**
+ * Active-listing count per `propertyType` (the Browse menu's per-category
+ * badge). Uses count() aggregation queries instead of downloading the
+ * listings themselves — one cheap server-side count per category rather than
+ * pulling every active listing's full document into a globally-mounted
+ * header component.
+ */
+export async function getActiveListingCountsByPropertyType(
+  propertyTypes: string[]
+): Promise<Record<string, number>> {
+  if (!db || propertyTypes.length === 0) {
+    return {};
+  }
+
+  const listingsCollection = collection(db, LISTINGS_COLLECTION);
+  const entries = await Promise.all(
+    propertyTypes.map(async (propertyType) => {
+      const countQuery = query(
+        listingsCollection,
+        where("status", "==", "active"),
+        where("propertyType", "==", propertyType)
+      );
+      const snapshot = await getCountFromServer(countQuery);
+      return [propertyType, snapshot.data().count] as const;
+    })
+  );
+
+  return Object.fromEntries(entries);
 }
 
 export async function getListingById(id: string): Promise<Listing | null> {

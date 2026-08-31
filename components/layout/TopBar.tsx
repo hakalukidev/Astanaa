@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import LocationCascadeSelect, { type LocationCascadeValue } from '@/components/listings/LocationCascadeSelect';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getActiveListingCountsByPropertyType } from '@/lib/listing-service';
 import { subscribeToListingPurposes, type ListingPurposeRecord } from '@/lib/listing-purposes';
 import { childrenOf, searchLocationNodes, subscribeToLocationNodes, type LocationNode } from '@/lib/location-nodes';
 import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
@@ -118,6 +119,7 @@ function PropertyTypeGroup({
   label,
   groupIcon: GroupIcon,
   categories,
+  counts,
   language,
   isExpanded,
   onToggle,
@@ -128,6 +130,7 @@ function PropertyTypeGroup({
   label: string;
   groupIcon: LucideIcon;
   categories: PropertyTypeCategory[];
+  counts: Record<string, number>;
   language: 'en' | 'bn';
   isExpanded: boolean;
   onToggle: () => void;
@@ -168,7 +171,12 @@ function PropertyTypeGroup({
                   }`}
                 >
                   <TypeIcon size={14} className="shrink-0" />
-                  {language === 'bn' ? category.bn : category.en}
+                  <span className="flex-1 truncate">{language === 'bn' ? category.bn : category.en}</span>
+                  {counts[category.en] !== undefined && (
+                    <span className={`shrink-0 text-xs ${light ? 'text-gray-400' : 'text-white/50'}`}>
+                      {counts[category.en]}
+                    </span>
+                  )}
                 </button>
               </li>
             );
@@ -424,6 +432,7 @@ export default function TopBar() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const [purposes, setPurposes] = useState<ListingPurposeRecord[]>([]);
+  const [propertyTypeCounts, setPropertyTypeCounts] = useState<Record<string, number>>({});
   // What the Browse trigger button shows — null means "All Listings". Keeping
   // both language variants (not just the current one) lets BilingualLabel
   // size the button for the wider of the two, so toggling language never
@@ -461,6 +470,27 @@ export default function TopBar() {
 
   useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
   useEffect(() => subscribeToListingPurposes(setPurposes), []);
+
+  // Per-category listing counts are only needed once the Browse menu is
+  // actually opened — fetched lazily (rather than on every page load, since
+  // TopBar is mounted globally) and refreshed each time it's reopened so
+  // counts don't go stale.
+  useEffect(() => {
+    if (!isBrowseOpen || propertyTypeCategories.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    getActiveListingCountsByPropertyType(propertyTypeCategories.map((category) => category.en))
+      .then((counts) => {
+        if (!cancelled) {
+          setPropertyTypeCounts(counts);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isBrowseOpen, propertyTypeCategories]);
 
   const categoriesByPurpose = useMemo(
     () => groupCategoriesByPurpose(propertyTypeCategories),
@@ -617,6 +647,7 @@ export default function TopBar() {
                     label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
                     groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
                     categories={categoriesByPurpose[purposeRecord.key] ?? []}
+                    counts={propertyTypeCounts}
                     language={language}
                     isExpanded={expandedGroup === purposeRecord.key}
                     onToggle={() => toggleGroup(purposeRecord.key)}
@@ -842,6 +873,7 @@ export default function TopBar() {
                       label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
                       groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
                       categories={categoriesByPurpose[purposeRecord.key] ?? []}
+                      counts={propertyTypeCounts}
                       language={language}
                       isExpanded={expandedGroup === purposeRecord.key}
                       onToggle={() => toggleGroup(purposeRecord.key)}

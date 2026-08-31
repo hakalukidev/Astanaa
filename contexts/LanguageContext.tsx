@@ -22,7 +22,7 @@ const LANGUAGE_STORAGE_KEY = "astanaa-language";
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>("bn");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
