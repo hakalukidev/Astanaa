@@ -59,7 +59,12 @@ export default function AdminLoginForm() {
         setErrorMessage("Invalid email or password.");
       } else if (code === "auth/too-many-requests") {
         setErrorMessage("Too many attempts. Please wait a moment and try again.");
+      } else if (code === "auth/network-request-failed") {
+        setErrorMessage("Network error — please check your connection and try again.");
       } else {
+        // Logged so an intermittent occurrence leaves a trail to diagnose,
+        // instead of only ever surfacing this generic catch-all message.
+        console.error("Admin login failed:", error);
         setErrorMessage("Unable to reach the login service right now.");
       }
     } finally {

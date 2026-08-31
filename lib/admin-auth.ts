@@ -58,7 +58,11 @@ export async function createAdminSessionCookie(
   let decoded;
   try {
     decoded = await adminAuth.verifyIdToken(idToken);
-  } catch {
+  } catch (error) {
+    // Logged (rather than silently swallowed) so intermittent failures here
+    // — e.g. a cold-started instance's first outbound cert fetch timing out —
+    // leave a trail instead of only ever surfacing as a generic client error.
+    console.error("verifyIdToken failed:", error);
     return { error: "Your sign-in expired. Please try again.", status: 401 };
   }
 
