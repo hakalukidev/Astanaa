@@ -4,16 +4,21 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
+  query,
   serverTimestamp,
   updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-import type { ListingPurpose } from "@/lib/listings";
+import { LISTINGS_COLLECTION, type ListingPurpose } from "@/lib/listings";
 import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
+
+const FIRESTORE_BATCH_WRITE_LIMIT = 500;
 
 export const PROPERTY_TYPE_CATEGORIES_COLLECTION = "propertyTypeCategories";
 
@@ -191,16 +196,50 @@ export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) 
   });
 }
 
+/**
+ * Renaming a category's `en` label would otherwise strand every listing that
+ * already stored the old label as its `propertyType` (listings reference
+ * categories by that string, not by id) — they'd silently vanish from that
+ * category's browse/filter/count views. This rewrites `propertyType` on every
+ * matching listing to the new label so old posts stay put.
+ */
+async function migrateListingsPropertyType(previousEn: string, nextEn: string) {
+  if (!db || previousEn === nextEn) {
+    return;
+  }
+
+  const matchingListings = await getDocs(
+    query(collection(db, LISTINGS_COLLECTION), where("propertyType", "==", previousEn))
+  );
+  const docRefs = matchingListings.docs.map((docSnapshot) => docSnapshot.ref);
+
+  for (let i = 0; i < docRefs.length; i += FIRESTORE_BATCH_WRITE_LIMIT) {
+    const batch = writeBatch(db);
+    for (const ref of docRefs.slice(i, i + FIRESTORE_BATCH_WRITE_LIMIT)) {
+      batch.update(ref, { propertyType: nextEn });
+    }
+    await batch.commit();
+  }
+}
+
 /** Staff-admin only (enforced by firestore.rules). */
 export async function updatePropertyTypeCategory(id: string, input: PropertyTypeCategoryInput) {
   if (!db) {
     throw new Error("Category data is not available.");
   }
 
-  await updateDoc(doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id), {
+  const categoryRef = doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id);
+  const existingSnapshot = await getDoc(categoryRef);
+  const previousEn = existingSnapshot.exists() ? (existingSnapshot.data().en as string | undefined) : undefined;
+
+  await updateDoc(categoryRef, {
     ...input,
     icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
   });
+
+  if (previousEn && previousEn !== input.en) {
+    await migrateListingsPropertyType(previousEn, input.en);
+  }
 }
 
 /** Staff-admin only (enforced by firestore.rules). */
