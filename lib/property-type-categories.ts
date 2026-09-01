@@ -14,9 +14,13 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
+import { getOrFetch } from "@/lib/browser-cache";
 import { db } from "@/lib/firebase";
 import { LISTINGS_COLLECTION, type ListingPurpose } from "@/lib/listings";
 import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
+
+const CATEGORIES_CACHE_KEY = "astanaa-property-type-categories-cache";
+const CATEGORIES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 const FIRESTORE_BATCH_WRITE_LIMIT = 500;
 
@@ -140,6 +144,32 @@ export function subscribeToPropertyTypeCategories(
       callback(FALLBACK_CATEGORIES);
     }
   );
+}
+
+/**
+ * Read-only, cached alternative to `subscribeToPropertyTypeCategories` for
+ * public pages that just need to *display* category labels (listing cards,
+ * listing detail, the post-ad picker, the TopBar browse menu). Each of these
+ * used to mount its own live `onSnapshot` listener — every listing card on a
+ * page independently re-reading the whole collection — which multiplied
+ * Firestore reads by however many were on screen at once. Categories change
+ * rarely (an admin editing them), so this fetches once and caches in
+ * localStorage for `CATEGORIES_CACHE_TTL_MS`, deduping concurrent callers.
+ * The admin Categories page still uses the live subscription below so edits
+ * show up immediately while editing.
+ */
+export async function getPropertyTypeCategoriesCached(): Promise<PropertyTypeCategory[]> {
+  return getOrFetch(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TTL_MS, async () => {
+    if (!db) {
+      return FALLBACK_CATEGORIES;
+    }
+    try {
+      const snapshot = await getDocs(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION));
+      return snapshot.empty ? FALLBACK_CATEGORIES : sortCategories(snapshot.docs.map(mapCategory));
+    } catch {
+      return FALLBACK_CATEGORIES;
+    }
+  });
 }
 
 /** Buckets categories by their purpose key. Purposes with no categories yet

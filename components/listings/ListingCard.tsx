@@ -12,8 +12,8 @@ import {
   type Listing,
 } from "@/lib/listings";
 import {
+  getPropertyTypeCategoriesCached,
   getPropertyTypeLabel,
-  subscribeToPropertyTypeCategories,
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
@@ -29,7 +29,17 @@ export default function ListingCard({ listing }: ListingCardProps) {
   const isBoosted = listing.boost.status === "active";
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
 
-  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+  useEffect(() => {
+    let cancelled = false;
+    getPropertyTypeCategoriesCached().then((categories) => {
+      if (!cancelled) {
+        setPropertyTypeCategories(categories);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const propertyTypeLabel = getPropertyTypeLabel(propertyTypeCategories, listing.propertyType, language);
 

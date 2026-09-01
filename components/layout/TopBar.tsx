@@ -24,7 +24,7 @@ import LocationCascadeSelect, { type LocationCascadeValue } from '@/components/l
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getActiveListingCountsByPropertyType } from '@/lib/listing-service';
-import { subscribeToListingPurposes, type ListingPurposeRecord } from '@/lib/listing-purposes';
+import { getListingPurposesCached, type ListingPurposeRecord } from '@/lib/listing-purposes';
 import { childrenOf, searchLocationNodes, subscribeToLocationNodes, type LocationNode } from '@/lib/location-nodes';
 import { formatListingPostedAt, type ListingPurpose } from '@/lib/listings';
 import {
@@ -34,8 +34,8 @@ import {
   type AppNotification,
 } from '@/lib/notifications';
 import {
+  getPropertyTypeCategoriesCached,
   groupCategoriesByPurpose,
-  subscribeToPropertyTypeCategories,
   type PropertyTypeCategory,
 } from '@/lib/property-type-categories';
 import { getPropertyTypeIcon } from '@/lib/property-type-icons';
@@ -468,29 +468,35 @@ export default function TopBar() {
     return subscribeToUserNotifications(user.uid, setNotifications);
   }, [user]);
 
-  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
-  useEffect(() => subscribeToListingPurposes(setPurposes), []);
-
-  // Per-category listing counts are only needed once the Browse menu is
-  // actually opened — fetched lazily (rather than on every page load, since
-  // TopBar is mounted globally) and refreshed each time it's reopened so
-  // counts don't go stale.
   useEffect(() => {
-    if (!isBrowseOpen || propertyTypeCategories.length === 0) {
-      return;
-    }
     let cancelled = false;
-    getActiveListingCountsByPropertyType(propertyTypeCategories.map((category) => category.en))
-      .then((counts) => {
-        if (!cancelled) {
-          setPropertyTypeCounts(counts);
-        }
-      })
-      .catch(() => {});
+    getPropertyTypeCategoriesCached().then((categories) => {
+      if (!cancelled) {
+        setPropertyTypeCategories(categories);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [isBrowseOpen, propertyTypeCategories]);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    getListingPurposesCached().then((loadedPurposes) => {
+      if (!cancelled) {
+        setPurposes(loadedPurposes);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Per-category listing counts cost one aggregate read per category, so
+  // rather than fetching every purpose group's counts on every menu open
+  // (expensive against Firestore's daily quota for a globally-mounted
+  // component), fetch a group's counts lazily the first time it's expanded,
+  // and only once per page load — see toggleGroup().
+  const fetchedCountsForPurposeRef = useRef<Set<string>>(new Set());
 
   const categoriesByPurpose = useMemo(
     () => groupCategoriesByPurpose(propertyTypeCategories),
@@ -563,6 +569,24 @@ export default function TopBar() {
 
   function toggleGroup(purpose: ListingPurpose) {
     setExpandedGroup((current) => (current === purpose ? null : purpose));
+
+    if (fetchedCountsForPurposeRef.current.has(purpose)) {
+      return;
+    }
+    fetchedCountsForPurposeRef.current.add(purpose);
+
+    const categoriesForPurpose = categoriesByPurpose[purpose] ?? [];
+    getActiveListingCountsByPropertyType(categoriesForPurpose.map((category) => category.en))
+      .then((counts) => {
+        setPropertyTypeCounts((current) => ({ ...current, ...counts }));
+      })
+      .catch((error) => {
+        fetchedCountsForPurposeRef.current.delete(purpose);
+        // Logged rather than silently swallowed — a Firestore rules/index/
+        // quota issue here would otherwise just look like "counts never show
+        // up" with no clue why.
+        console.error('Failed to load property type counts:', error);
+      });
   }
 
   // Deliberately doesn't close the dropdown/panel — Division -> District ->

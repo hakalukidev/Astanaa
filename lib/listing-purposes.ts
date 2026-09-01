@@ -11,10 +11,14 @@ import {
   writeBatch,
 } from "firebase/firestore";
 
+import { getOrFetch } from "@/lib/browser-cache";
 import { db } from "@/lib/firebase";
 import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
 
 export const LISTING_PURPOSES_COLLECTION = "listingPurposes";
+
+const PURPOSES_CACHE_KEY = "astanaa-listing-purposes-cache";
+const PURPOSES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * A top-level "purpose" (For Rent, For Sale, and whatever an admin adds
@@ -118,6 +122,28 @@ export function subscribeToListingPurposes(callback: (purposes: ListingPurposeRe
       callback(FALLBACK_PURPOSES);
     }
   );
+}
+
+/**
+ * Read-only, cached alternative to `subscribeToListingPurposes` for public
+ * pages that just need to *display* purpose labels (listing cards, listing
+ * detail, the post-ad picker, the TopBar browse menu) — see the matching
+ * `getPropertyTypeCategoriesCached` in `lib/property-type-categories.ts` for
+ * why this exists (each consumer used to mount its own live listener). The
+ * admin Listing Purposes page still uses the live subscription above.
+ */
+export async function getListingPurposesCached(): Promise<ListingPurposeRecord[]> {
+  return getOrFetch(PURPOSES_CACHE_KEY, PURPOSES_CACHE_TTL_MS, async () => {
+    if (!db) {
+      return FALLBACK_PURPOSES;
+    }
+    try {
+      const snapshot = await getDocs(collection(db, LISTING_PURPOSES_COLLECTION));
+      return snapshot.empty ? FALLBACK_PURPOSES : sortPurposes(snapshot.docs.map(mapPurpose));
+    } catch {
+      return FALLBACK_PURPOSES;
+    }
+  });
 }
 
 /** Resolves a listing's/category's purpose `key` to its display label, with a

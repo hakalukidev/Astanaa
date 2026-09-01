@@ -7,6 +7,7 @@ import {
   addDoc,
   collection,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -77,7 +78,8 @@ export function subscribeToUserNotifications(
   const notificationsQuery = query(
     collection(db, NOTIFICATIONS_COLLECTION),
     where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
+    limit(50)
   );
 
   return onSnapshot(notificationsQuery, (snapshot) => {

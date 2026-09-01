@@ -16,12 +16,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
+import { getListingPurposesCached, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { createListing, updateListing } from "@/lib/listing-service";
 import { formatListingLocation, type Listing, type ListingPurpose } from "@/lib/listings";
 import {
+  getPropertyTypeCategoriesCached,
   groupCategoriesByPurpose,
-  subscribeToPropertyTypeCategories,
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
@@ -104,8 +104,28 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, listing]);
 
-  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
-  useEffect(() => subscribeToListingPurposes(setPurposes), []);
+  useEffect(() => {
+    let cancelled = false;
+    getPropertyTypeCategoriesCached().then((categories) => {
+      if (!cancelled) {
+        setPropertyTypeCategories(categories);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    getListingPurposesCached().then((loadedPurposes) => {
+      if (!cancelled) {
+        setPurposes(loadedPurposes);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keep the chosen purpose valid whenever the purposes list loads (e.g. an
   // admin renamed/removed the one currently selected).

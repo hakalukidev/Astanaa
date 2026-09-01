@@ -26,11 +26,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { getOrCreateChat } from "@/lib/chat";
 import { getLastSearchedLocation } from "@/lib/last-searched-location";
-import { getListingPurposeLabel, subscribeToListingPurposes, type ListingPurposeRecord } from "@/lib/listing-purposes";
+import { getListingPurposeLabel, getListingPurposesCached, type ListingPurposeRecord } from "@/lib/listing-purposes";
 import { deleteListing } from "@/lib/listing-service";
 import {
+  getPropertyTypeCategoriesCached,
   getPropertyTypeLabel,
-  subscribeToPropertyTypeCategories,
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
 import { revalidateListingsCache } from "@/lib/revalidate-listings-cache";
@@ -67,8 +67,28 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
   const [lastSearchedLocation, setLastSearchedLocationState] = useState<string | null>(null);
 
-  useEffect(() => subscribeToListingPurposes(setPurposes), []);
-  useEffect(() => subscribeToPropertyTypeCategories(setPropertyTypeCategories), []);
+  useEffect(() => {
+    let cancelled = false;
+    getListingPurposesCached().then((loadedPurposes) => {
+      if (!cancelled) {
+        setPurposes(loadedPurposes);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    getPropertyTypeCategoriesCached().then((categories) => {
+      if (!cancelled) {
+        setPropertyTypeCategories(categories);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Read once on mount — localStorage isn't available during SSR, so this
   // can't be computed alongside the other derived values below.
