@@ -107,11 +107,24 @@ export default function LatestListings({ listings }: LatestListingsProps) {
         {sortedListings.length === 0 ? (
           <p className="mt-3 py-8 text-center text-sm text-slate-500">{t.noResults}</p>
         ) : (
-          <div className="mt-3 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
-            {sortedListings.slice(0, 20).map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          <>
+            <div className="mt-3 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
+              {sortedListings.slice(0, 20).map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+
+            {sortedListings.length > 20 && (
+              <div className="mt-8 flex justify-center">
+                <Link
+                  href="/listings"
+                  className="inline-flex items-center justify-center rounded-md border border-green-600 px-6 py-3 text-sm font-semibold text-green-700 transition hover:bg-green-600 hover:text-white"
+                >
+                  {t.seeMore}
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

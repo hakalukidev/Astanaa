@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import ListingCard from "@/components/listings/ListingCard";
 import PriceFilterDropdown, { type PriceRange } from "@/components/listings/PriceFilterDropdown";
@@ -26,6 +26,8 @@ function compareBySortOption(left: Listing, right: Listing, sortOption: SortOpti
   }
 }
 
+const LISTINGS_PER_PAGE = 30;
+
 type ListingsCatalogClientProps = {
   initialListings: Listing[];
 };
@@ -44,7 +46,9 @@ export default function ListingsCatalogClient({
   );
   const [sortOption, setSortOption] = useState<SortOption>("newest");
   const [priceRange, setPriceRange] = useState<PriceRange>({ min: null, max: null });
+  const [page, setPage] = useState(1);
   const deferredSearchTerm = useDeferredValue(searchTerm);
+  const resultsTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const nextSearchTerm = searchParams?.get("search")?.trim() ?? "";
@@ -97,6 +101,25 @@ export default function ListingsCatalogClient({
     });
   }, [baseFilteredListings, priceRange, sortOption]);
 
+  // Jump back to page 1 whenever the result set changes underneath the
+  // current page — otherwise a filter change could leave the user staring at
+  // an empty page 3 of a now-shorter list.
+  useEffect(() => {
+    setPage(1);
+  }, [baseFilteredListings, priceRange, sortOption]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredListings.length / LISTINGS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedListings = filteredListings.slice(
+    (currentPage - 1) * LISTINGS_PER_PAGE,
+    currentPage * LISTINGS_PER_PAGE
+  );
+
+  function goToPage(nextPage: number) {
+    setPage(nextPage);
+    resultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <main className="bg-gray-50">
       <section className="bg-white py-10">
@@ -130,17 +153,43 @@ export default function ListingsCatalogClient({
       </section>
 
       <section className="py-10">
-        <div className="container mx-auto px-4">
+        <div ref={resultsTopRef} className="container mx-auto px-4">
           {filteredListings.length === 0 ? (
             <p className="py-16 text-center text-gray-500">
               {t.noResults}
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
-              {filteredListings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-6">
+                {pagedListings.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="rounded-md border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    {t.previousPage}
+                  </button>
+                  <span className="text-sm text-gray-500">
+                    {t.pageLabel} {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-md border border-green-600 px-5 py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-green-700"
+                  >
+                    {t.nextPage}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
