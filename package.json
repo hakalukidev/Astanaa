@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:admin": "node --env-file=.env.local scripts/create-admin.mjs",
-    "seed:admin:pg": "node --env-file=.env scripts/seed-admin-postgres.mjs"
+    "seed:admin:pg": "node --env-file=.env scripts/seed-admin-postgres.mjs",
+    "migrate:listings": "node --env-file=.env --env-file=.env.local scripts/migrate-listings-to-postgres.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
