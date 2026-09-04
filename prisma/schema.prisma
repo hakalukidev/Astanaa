@@ -1,0 +1,367 @@
+// Prisma schema for the Firebase Firestore -> PostgreSQL migration.
+// See /home/ashraful/.claude/plans/abstract-cooking-walrus.md for the full
+// migration plan this schema implements (Phase 1).
+//
+// Conventions:
+// - Model names are PascalCase (Prisma convention); @@map/@map keep the
+//   actual Postgres table/column names snake_case.
+// - Every id that has a Firestore-era equivalent stays a String so the
+//   Phase 6 data migration can carry over the original Firebase
+//   UID/document-id values verbatim (no cross-collection remapping needed).
+//   @default(cuid()) only kicks in for brand-new rows created after cutover.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums -------------------------------------------------------------
+
+enum UserRole {
+  PROMOTER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ListingStatus {
+  PENDING
+  ACTIVE
+  SOLD
+  REJECTED
+}
+
+enum BoostStatus {
+  NONE
+  PENDING
+  ACTIVE
+}
+
+enum NotificationType {
+  LISTING_APPROVED
+  LISTING_REJECTED
+}
+
+enum BuyRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum OtpChannel {
+  EMAIL
+  PHONE
+}
+
+// --- Users & sessions ----------------------------------------------------
+
+// Unifies Firestore's `users` (buyer/seller profile) and `admins`
+// (staff role) collections, joined there by Firebase UID, into one table.
+// `role = null` is a regular client account (today's default "no admins doc"
+// case); `PROMOTER` is a normal account with a staff-facing posting role,
+// not elevated Firestore-rules privilege — matches how the app treats it
+// today (see firestore.rules: promoter has no special rule, it's UI-only).
+model User {
+  id        String    @id @default(cuid())
+  name      String?
+  phone     String?   @unique
+  email     String    @unique
+  role      UserRole?
+
+  // argon2 hash for accounts created/rehashed post-migration.
+  passwordHash        String?
+  // Populated only for accounts imported from `firebase auth:export`,
+  // cleared once the user logs in once and gets rehashed to argon2.
+  legacyScryptHash     String?
+  legacyScryptSalt     String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  sessions              Session[]
+  listings              Listing[]        @relation("SellerListings")
+  moderatedListings     Listing[]        @relation("ModeratedListings")
+  notifications         Notification[]
+  chatsAsBuyer          Chat[]           @relation("ChatBuyer")
+  chatsAsSeller         Chat[]           @relation("ChatSeller")
+  chatParticipations    ChatParticipant[]
+  messages              Message[]
+  buyRequestsAsBuyer    BuyRequest[]     @relation("BuyRequestBuyer")
+  buyRequestsAsSeller   BuyRequest[]     @relation("BuyRequestSeller")
+  moderationLogEntries  ModerationLog[]
+
+  @@map("users")
+}
+
+// Opaque bearer token in an httpOnly cookie -> row lookup, mirroring the
+// revocable-session pattern lib/admin-auth.ts already uses for admins today
+// (deliberately not a stateless JWT, so logout/revocation is instant).
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// --- Core marketplace ----------------------------------------------------
+
+model Listing {
+  id          String        @id @default(cuid())
+
+  sellerId        String    @map("seller_id")
+  seller          User      @relation("SellerListings", fields: [sellerId], references: [id])
+  // Frozen at post time — intentionally NOT re-derived from the live user
+  // record, matching the original Firestore document shape.
+  sellerName      String    @map("seller_name")
+  sellerPhone     String?   @map("seller_phone")
+  sellerWhatsapp  String?   @map("seller_whatsapp")
+  sellerEmail     String?   @map("seller_email")
+  sellerRole      String    @map("seller_role")
+
+  title       String
+  description String        @db.Text
+  price       Int
+  negotiable  Boolean       @default(false)
+
+  // Kept as the category's English label (not an id/FK) on purpose — this
+  // is what property-type-categories.ts's rename-cascade migrates.
+  purpose      String
+  propertyType String       @map("property_type")
+
+  location          String
+  locationDivision  String?  @map("location_division")
+  locationDistrict  String?  @map("location_district")
+  locationUpazila   String?  @map("location_upazila")
+  locationArea      String?  @map("location_area")
+  locationExtra     String[] @map("location_extra")
+  locationMapUrl    String?  @map("location_map_url")
+
+  bedrooms  Int?
+  bathrooms Int?
+  areaSqft  Int?  @map("area_sqft")
+
+  photoUrls      String[] @map("photo_urls")
+  photoPublicIds String[] @map("photo_public_ids")
+
+  status ListingStatus @default(PENDING)
+
+  boostStatus        BoostStatus @default(NONE) @map("boost_status")
+  boostMethod         String?     @map("boost_method")
+  boostTransactionId  String?     @map("boost_transaction_id")
+  boostRequestedAt    DateTime?   @map("boost_requested_at")
+  boostExpiresAt      DateTime?   @map("boost_expires_at")
+
+  moderatedBy     String?   @map("moderated_by")
+  moderator       User?     @relation("ModeratedListings", fields: [moderatedBy], references: [id])
+  moderatedByName String?   @map("moderated_by_name")
+  moderatedAt     DateTime? @map("moderated_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  notifications Notification[]
+  chats         Chat[]
+  buyRequests   BuyRequest[]
+
+  @@index([status, createdAt])
+  @@index([sellerId, createdAt])
+  @@index([status, propertyType])
+  @@map("listings")
+}
+
+// Append-only audit trail written when a listing is permanently deleted by
+// a moderator/admin — snapshot fields, deliberately not FK'd to Listing
+// (the listing is gone by the time this row is written).
+model ModerationLog {
+  id            String   @id @default(cuid())
+  listingId     String   @map("listing_id")
+  listingTitle  String   @map("listing_title")
+  sellerId      String   @map("seller_id")
+  sellerName    String   @map("seller_name")
+  moderatorUid  String   @map("moderator_uid")
+  moderator     User     @relation(fields: [moderatorUid], references: [id])
+  moderatorName String   @map("moderator_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("moderation_log")
+}
+
+model Notification {
+  id           String            @id @default(cuid())
+  userId       String            @map("user_id")
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         NotificationType
+  listingId    String?           @map("listing_id")
+  listing      Listing?          @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listingTitle String            @map("listing_title")
+  read         Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// --- Chat ------------------------------------------------------------
+
+model Chat {
+  id              String   @id @default(cuid())
+  listingId       String   @map("listing_id")
+  listing         Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingTitle    String   @map("listing_title")
+  listingPhotoUrl String?  @map("listing_photo_url")
+
+  buyerId   String @map("buyer_id")
+  buyer     User   @relation("ChatBuyer", fields: [buyerId], references: [id])
+  buyerName String @map("buyer_name")
+
+  sellerId   String @map("seller_id")
+  seller     User   @relation("ChatSeller", fields: [sellerId], references: [id])
+  sellerName String @map("seller_name")
+
+  lastMessage   String?   @map("last_message")
+  lastMessageAt DateTime? @map("last_message_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  participants ChatParticipant[]
+  messages     Message[]
+
+  @@unique([listingId, buyerId])
+  @@map("chats")
+}
+
+// Replaces Firestore's `participantIds` array-contains query with a plain
+// indexed join table — "my chats" becomes `WHERE user_id = ?` instead of an
+// array scan.
+model ChatParticipant {
+  id     String @id @default(cuid())
+  chatId String @map("chat_id")
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String   @map("chat_id")
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId  String   @map("sender_id")
+  sender    User     @relation(fields: [senderId], references: [id])
+  text      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chatId, createdAt])
+  @@map("messages")
+}
+
+model BuyRequest {
+  id           String            @id @default(cuid())
+  listingId    String            @map("listing_id")
+  listing      Listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingTitle String?           @map("listing_title")
+
+  buyerId    String @map("buyer_id")
+  buyer      User   @relation("BuyRequestBuyer", fields: [buyerId], references: [id])
+  buyerName  String @map("buyer_name")
+  buyerPhone String @map("buyer_phone")
+
+  sellerId String @map("seller_id")
+  seller   User   @relation("BuyRequestSeller", fields: [sellerId], references: [id])
+
+  status    BuyRequestStatus @default(PENDING)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@unique([listingId, buyerId])
+  @@index([sellerId, createdAt])
+  @@map("buy_requests")
+}
+
+// --- Admin-managed taxonomy ----------------------------------------------
+
+model PropertyTypeCategory {
+  id        String   @id @default(cuid())
+  purpose   String
+  en        String
+  bn        String
+  icon      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("property_type_categories")
+}
+
+model ListingPurpose {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  en        String
+  bn        String
+  icon      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("listing_purposes")
+}
+
+// Self-referencing adjacency list (division -> district -> upazila -> ...).
+// Tree reads become a recursive CTE via $queryRaw; writes stay plain
+// single-row inserts/updates exactly like today.
+model LocationNode {
+  id          String         @id @default(cuid())
+  parentId    String?        @map("parent_id")
+  parent      LocationNode?  @relation("LocationTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    LocationNode[] @relation("LocationTree")
+  en          String
+  bn          String
+  order       Int            @default(0)
+  manualOrder Boolean        @default(false) @map("manual_order")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([parentId])
+  @@map("location_nodes")
+}
+
+// --- Site content / misc --------------------------------------------------
+
+model SiteVisit {
+  date  String @id // "YYYY-MM-DD"
+  count Int    @default(0)
+
+  @@map("site_visits")
+}
+
+// Generic key-value store for admin-edited content blocks (about page,
+// footer, rules & restrictions, terms & conditions). Kept as JSON rather
+// than one table per page — these are content documents, not relational
+// data, and this avoids guessing at exact field lists during Phase 1.
+// `key` is one of: "about", "footer", "rules", "terms".
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+model Otp {
+  // Matches the old Firestore doc id shape: "{purpose}_{identifier}".
+  id        String     @id
+  channel   OtpChannel
+  codeHash  String     @map("code_hash")
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now()) @map("created_at")
+  expiresAt DateTime   @map("expires_at")
+
+  @@map("otps")
+}
