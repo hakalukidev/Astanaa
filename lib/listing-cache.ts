@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { getAllListings } from "@/lib/listing-service";
+import { getAllListings } from "@/lib/listing-service-server";
 
 export const listingsCacheTag = "listings";
 

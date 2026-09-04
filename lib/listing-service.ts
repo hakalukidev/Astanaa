@@ -1,350 +1,148 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getCountFromServer,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+"use client";
 
-import { db } from "@/lib/firebase";
-import {
-  LISTINGS_COLLECTION,
-  mapListingSnapshot,
-  mapModerationLogSnapshot,
-  MODERATION_LOG_COLLECTION,
-  type BoostPaymentMethod,
-  type Listing,
-  type ListingInput,
-  type ModerationLogEntry,
-} from "@/lib/listings";
-import { createListingStatusNotification } from "@/lib/notifications";
+import type { BoostPaymentMethod, Listing, ListingInput, ModerationLogEntry } from "@/lib/listings";
 
-function getListingsCollection() {
-  if (!db) {
-    throw new Error("Listing data is not available.");
+const POLL_INTERVAL_MS = 5000;
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error((data as { error?: string } | null)?.error ?? "Request failed");
   }
 
-  return collection(db, LISTINGS_COLLECTION);
+  return data as T;
 }
 
-export async function getAllListings(): Promise<Listing[]> {
-  if (!db) {
-    return [];
+/** Generic "poll an endpoint every few seconds" — replaces the old
+ * Firestore onSnapshot listeners for the admin/moderation feeds. Returns an
+ * unsubscribe function with the same shape the components already expect. */
+function poll<T>(url: string, onChange: (data: T[]) => void, extractKey: string) {
+  let cancelled = false;
+
+  async function tick() {
+    try {
+      const data = await fetchJson<Record<string, T[]>>(url);
+      if (!cancelled) {
+        onChange(data[extractKey] ?? []);
+      }
+    } catch {
+      // Transient network/poll failure — keep the previous data, try again
+      // next tick rather than clearing the list out from under the viewer.
+    }
   }
 
-  const listingsQuery = query(
-    collection(db, LISTINGS_COLLECTION),
-    where("status", "==", "active"),
-    orderBy("createdAt", "desc")
-  );
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
 
-  const snapshot = await getDocs(listingsQuery);
-
-  return snapshot.docs
-    .map((docSnapshot) => mapListingSnapshot(docSnapshot))
-    .filter((listing): listing is Listing => Boolean(listing));
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
-/**
- * Active-listing count per `propertyType` (the Browse menu's per-category
- * badge). Uses count() aggregation queries instead of downloading the
- * listings themselves — one cheap server-side count per category rather than
- * pulling every active listing's full document into a globally-mounted
- * header component.
- */
 export async function getActiveListingCountsByPropertyType(
   propertyTypes: string[]
 ): Promise<Record<string, number>> {
-  if (!db || propertyTypes.length === 0) {
+  if (propertyTypes.length === 0) {
     return {};
   }
 
-  const listingsCollection = collection(db, LISTINGS_COLLECTION);
-  const entries = await Promise.all(
-    propertyTypes.map(async (propertyType) => {
-      const countQuery = query(
-        listingsCollection,
-        where("status", "==", "active"),
-        where("propertyType", "==", propertyType)
-      );
-      const snapshot = await getCountFromServer(countQuery);
-      return [propertyType, snapshot.data().count] as const;
-    })
+  const data = await fetchJson<{ counts: Record<string, number> }>(
+    `/api/listings/counts?types=${encodeURIComponent(propertyTypes.join(","))}`
   );
 
-  return Object.fromEntries(entries);
+  return data.counts;
 }
 
-export async function getListingById(id: string): Promise<Listing | null> {
-  if (!db) {
-    return null;
-  }
-
-  const snapshot = await getDoc(doc(db, LISTINGS_COLLECTION, id));
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  return mapListingSnapshot(snapshot);
+export async function getListingsBySeller(_sellerId: string): Promise<Listing[]> {
+  // The sellerId argument is kept for call-site compatibility, but the
+  // server always scopes this to the session's own user — a client can
+  // never fetch someone else's listings by passing a different id.
+  const data = await fetchJson<{ listings: Listing[] }>("/api/listings/mine");
+  return data.listings;
 }
 
-export async function getListingsBySeller(sellerId: string): Promise<Listing[]> {
-  if (!db) {
-    return [];
-  }
-
-  const listingsQuery = query(
-    collection(db, LISTINGS_COLLECTION),
-    where("sellerId", "==", sellerId),
-    orderBy("createdAt", "desc")
-  );
-
-  const snapshot = await getDocs(listingsQuery);
-
-  return snapshot.docs
-    .map((docSnapshot) => mapListingSnapshot(docSnapshot))
-    .filter((listing): listing is Listing => Boolean(listing));
-}
-
-/** Used by the moderation queue — fetches listings in a given status, newest first. */
 export function subscribeToListingsByStatus(
   status: Listing["status"],
   onChange: (listings: Listing[]) => void
 ) {
-  if (!db) {
-    onChange([]);
-    return () => {};
-  }
-
-  const listingsQuery = query(
-    collection(db, LISTINGS_COLLECTION),
-    where("status", "==", status),
-    orderBy("createdAt", "desc")
-  );
-
-  return onSnapshot(listingsQuery, (snapshot) => {
-    onChange(
-      snapshot.docs
-        .map((docSnapshot) => mapListingSnapshot(docSnapshot))
-        .filter((listing): listing is Listing => Boolean(listing))
-    );
-  });
+  return poll(`/api/admin/listings?status=${status}`, onChange, "listings");
 }
 
-/**
- * Used by the "All Posts" admin page — every listing regardless of status,
- * newest first. Firestore security rules restrict this to staff/moderator
- * accounts (see canModerateListings() in firestore.rules); everyone else's
- * read is scoped to active listings + their own.
- */
-export function subscribeToAllListingsForAdmin(
-  onChange: (listings: Listing[]) => void
-) {
-  if (!db) {
-    onChange([]);
-    return () => {};
-  }
-
-  const listingsQuery = query(
-    collection(db, LISTINGS_COLLECTION),
-    orderBy("createdAt", "desc")
-  );
-
-  return onSnapshot(listingsQuery, (snapshot) => {
-    onChange(
-      snapshot.docs
-        .map((docSnapshot) => mapListingSnapshot(docSnapshot))
-        .filter((listing): listing is Listing => Boolean(listing))
-    );
-  });
+export function subscribeToAllListingsForAdmin(onChange: (listings: Listing[]) => void) {
+  return poll("/api/admin/listings", onChange, "listings");
 }
 
-export function subscribeToActiveListings(
-  onChange: (listings: Listing[]) => void
-) {
-  if (!db) {
-    onChange([]);
-    return () => {};
-  }
+export function subscribeToActiveListings(onChange: (listings: Listing[]) => void) {
+  return poll("/api/listings", onChange, "listings");
+}
 
-  const listingsQuery = query(
-    collection(db, LISTINGS_COLLECTION),
-    where("status", "==", "active"),
-    orderBy("createdAt", "desc")
-  );
-
-  return onSnapshot(listingsQuery, (snapshot) => {
-    onChange(
-      snapshot.docs
-        .map((docSnapshot) => mapListingSnapshot(docSnapshot))
-        .filter((listing): listing is Listing => Boolean(listing))
-    );
-  });
+export function subscribeToModerationLog(onChange: (entries: ModerationLogEntry[]) => void) {
+  return poll("/api/admin/moderation-log", onChange, "entries");
 }
 
 export async function createListing(input: ListingInput) {
-  const listingsCollection = getListingsCollection();
-
-  return addDoc(listingsCollection, {
-    ...input,
-    // Every new listing (client or promoter) waits for moderator/admin
-    // approval before it's publicly visible.
-    status: "pending",
-    boost: {
-      status: "none",
-      method: null,
-      transactionId: null,
-      requestedAtMs: null,
-      expiresAtMs: null,
-    },
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+  const data = await fetchJson<{ listing: Listing }>("/api/listings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
+  return data.listing;
 }
 
 export async function updateListing(
   id: string,
   input: Partial<ListingInput> & { status?: Listing["status"] }
 ) {
-  if (!db) {
-    throw new Error("Listing data is not available.");
-  }
-
-  return updateDoc(doc(db, LISTINGS_COLLECTION, id), {
-    ...input,
-    updatedAt: serverTimestamp(),
+  const data = await fetchJson<{ listing: Listing }>(`/api/listings/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
+  return data.listing;
 }
 
 /**
- * Permanently deletes a listing. When called with `moderator` (removal from
- * the moderation queue or admin posts page, as opposed to the owner deleting
- * their own listing), it also writes a moderationLog entry first — the
- * listing doc is about to disappear, so that's the only place left to record
- * who removed it and when. Powers the "removed" count on the Moderators
- * admin report.
+ * Permanently deletes a listing. The `moderator` argument is accepted for
+ * call-site compatibility but no longer trusted — the server derives who's
+ * actually deleting it from the session and logs accordingly.
  */
 export async function deleteListing(
   listing: Pick<Listing, "id" | "sellerId" | "sellerName" | "title">,
-  moderator?: { uid: string; name: string }
+  _moderator?: { uid: string; name: string }
 ) {
-  if (!db) {
-    throw new Error("Listing data is not available.");
-  }
-
-  await deleteDoc(doc(db, LISTINGS_COLLECTION, listing.id));
-
-  if (moderator) {
-    // Best-effort — a failed log write shouldn't undo the deletion, which
-    // already succeeded above.
-    await addDoc(collection(db, MODERATION_LOG_COLLECTION), {
-      listingId: listing.id,
-      listingTitle: listing.title,
-      sellerId: listing.sellerId,
-      sellerName: listing.sellerName,
-      moderatorUid: moderator.uid,
-      moderatorName: moderator.name,
-      createdAt: serverTimestamp(),
-    }).catch(() => {});
-  }
+  await fetchJson(`/api/listings/${listing.id}`, { method: "DELETE" });
 }
 
-/** Used by the Moderators admin report — every removal a moderator logged, newest first. */
-export function subscribeToModerationLog(
-  onChange: (entries: ModerationLogEntry[]) => void
-) {
-  if (!db) {
-    onChange([]);
-    return () => {};
-  }
-
-  const logQuery = query(
-    collection(db, MODERATION_LOG_COLLECTION),
-    orderBy("createdAt", "desc")
-  );
-
-  return onSnapshot(logQuery, (snapshot) => {
-    onChange(
-      snapshot.docs
-        .map((docSnapshot) => mapModerationLogSnapshot(docSnapshot))
-        .filter((entry): entry is ModerationLogEntry => Boolean(entry))
-    );
-  });
-}
-
-/**
- * Sets a listing's status. When called with `moderator` (approve/reject from
- * the moderation queue or admin posts page), it also records who did it and
- * when — powers the "who approved what, how fast" admin report — and notifies
- * the seller that their listing was approved/rejected.
- */
+/** Approve/reject a pending listing. `moderator` is kept for call-site
+ * compatibility — the server stamps the actual signed-in moderator. */
 export async function markListingStatus(
   listing: Pick<Listing, "id" | "sellerId" | "title">,
   status: Listing["status"],
-  moderator?: { uid: string; name: string }
+  _moderator?: { uid: string; name: string }
 ) {
-  if (!db) {
-    throw new Error("Listing data is not available.");
+  if (status !== "active" && status !== "rejected") {
+    throw new Error("markListingStatus only supports 'active' or 'rejected'.");
   }
-
-  const updates: Record<string, unknown> = {
-    status,
-    updatedAt: serverTimestamp(),
-  };
-
-  const isModeratedDecision = moderator && (status === "active" || status === "rejected");
-
-  if (isModeratedDecision) {
-    updates.moderatedBy = moderator.uid;
-    updates.moderatedByName = moderator.name;
-    updates.moderatedAt = serverTimestamp();
-  }
-
-  await updateDoc(doc(db, LISTINGS_COLLECTION, listing.id), updates);
-
-  if (isModeratedDecision) {
-    // Best-effort — a failed notification shouldn't undo the moderation action.
-    await createListingStatusNotification({
-      userId: listing.sellerId,
-      listingId: listing.id,
-      listingTitle: listing.title,
-      type: status === "active" ? "listing_approved" : "listing_rejected",
-    }).catch(() => {});
-  }
+  const data = await fetchJson<{ listing: Listing }>(`/api/listings/${listing.id}/moderate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  return data.listing;
 }
 
-/**
- * Submits a boost request for a listing. This only records intent + the
- * chosen payment method (bKash / Nagad / Card) — no live payment gateway is
- * wired up yet, so the boost stays "pending" until it's verified and
- * activated manually (planned as part of the admin workflow).
- */
 export async function requestListingBoost(
   id: string,
   method: BoostPaymentMethod,
   transactionId: string | null
 ) {
-  if (!db) {
-    throw new Error("Listing data is not available.");
-  }
-
-  return updateDoc(doc(db, LISTINGS_COLLECTION, id), {
-    boost: {
-      status: "pending",
-      method,
-      transactionId,
-      requestedAtMs: Date.now(),
-      expiresAtMs: null,
-    },
-    updatedAt: serverTimestamp(),
+  const data = await fetchJson<{ listing: Listing }>(`/api/listings/${id}/boost`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method, transactionId }),
   });
+  return data.listing;
 }

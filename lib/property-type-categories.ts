@@ -7,22 +7,18 @@ import {
   getDoc,
   getDocs,
   onSnapshot,
-  query,
   serverTimestamp,
   updateDoc,
-  where,
   writeBatch,
 } from "firebase/firestore";
 
 import { getOrFetch } from "@/lib/browser-cache";
 import { db } from "@/lib/firebase";
-import { LISTINGS_COLLECTION, type ListingPurpose } from "@/lib/listings";
+import type { ListingPurpose } from "@/lib/listings";
 import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
 
 const CATEGORIES_CACHE_KEY = "astanaa-property-type-categories-cache";
 const CATEGORIES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-const FIRESTORE_BATCH_WRITE_LIMIT = 500;
 
 export const PROPERTY_TYPE_CATEGORIES_COLLECTION = "propertyTypeCategories";
 
@@ -234,22 +230,18 @@ export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) 
  * matching listing to the new label so old posts stay put.
  */
 async function migrateListingsPropertyType(previousEn: string, nextEn: string) {
-  if (!db || previousEn === nextEn) {
+  if (previousEn === nextEn) {
     return;
   }
 
-  const matchingListings = await getDocs(
-    query(collection(db, LISTINGS_COLLECTION), where("propertyType", "==", previousEn))
-  );
-  const docRefs = matchingListings.docs.map((docSnapshot) => docSnapshot.ref);
-
-  for (let i = 0; i < docRefs.length; i += FIRESTORE_BATCH_WRITE_LIMIT) {
-    const batch = writeBatch(db);
-    for (const ref of docRefs.slice(i, i + FIRESTORE_BATCH_WRITE_LIMIT)) {
-      batch.update(ref, { propertyType: nextEn });
-    }
-    await batch.commit();
-  }
+  // Listings live in Postgres now (categories themselves haven't migrated
+  // yet) — this cascade is a bulk UPDATE behind an API route instead of a
+  // direct Firestore batch write.
+  await fetch("/api/admin/listings/migrate-property-type", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ previousEn, nextEn }),
+  });
 }
 
 /** Staff-admin only (enforced by firestore.rules). */
