@@ -1,7 +1,6 @@
 // components/admin/AdminLoginForm.tsx
 "use client";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,7 +8,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getFirebaseAuth } from "@/lib/firebase";
 
 export default function AdminLoginForm() {
   const router = useRouter();
@@ -25,22 +23,12 @@ export default function AdminLoginForm() {
     setIsSubmitting(true);
 
     try {
-      const auth = getFirebaseAuth();
-
-      if (!auth) {
-        setErrorMessage("Sign-in is not configured right now.");
-        return;
-      }
-
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await credential.user.getIdToken();
-
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ email, password }),
       });
 
       const responsePayload = (await response.json()) as { message?: string };
@@ -53,20 +41,11 @@ export default function AdminLoginForm() {
       router.replace("/admin/posts");
       router.refresh();
     } catch (error) {
-      const code = (error as { code?: string })?.code ?? "";
-
-      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-        setErrorMessage("Invalid email or password.");
-      } else if (code === "auth/too-many-requests") {
-        setErrorMessage("Too many attempts. Please wait a moment and try again.");
-      } else if (code === "auth/network-request-failed") {
-        setErrorMessage("Network error — please check your connection and try again.");
-      } else {
-        // Logged so an intermittent occurrence leaves a trail to diagnose,
-        // instead of only ever surfacing this generic catch-all message.
-        console.error("Admin login failed:", error);
-        setErrorMessage("Unable to reach the login service right now.");
-      }
+      // A thrown error here means the fetch itself failed (network/DNS),
+      // not a rejected login — logged so an intermittent occurrence leaves
+      // a trail to diagnose.
+      console.error("Admin login request failed:", error);
+      setErrorMessage("Network error — please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }

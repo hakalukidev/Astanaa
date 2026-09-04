@@ -160,7 +160,7 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
         listingTitle: listing.title,
         listingPhotoUrl: getPrimaryListingPhotoUrl(listing),
         buyerId: user.uid,
-        buyerName: profile?.name || user.displayName || "Astanaa user",
+        buyerName: profile?.name || "Astanaa user",
         sellerId: listing.sellerId,
         sellerName: listing.sellerName,
       });

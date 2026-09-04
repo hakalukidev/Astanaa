@@ -1,13 +1,18 @@
 import "server-only";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
-import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
-
-export const ADMIN_SESSION_COOKIE = "astanaa-admin-session";
-const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+import { db } from "@/lib/db";
+import { verifyPassword } from "@/lib/auth/password";
+import {
+  clearSessionCookie,
+  createUserSession,
+  destroySession,
+  getSessionUser,
+  getSessionToken,
+  setSessionCookie,
+} from "@/lib/auth/session";
 
 export type AdminRole = "super_admin" | "admin" | "moderator" | "promoter";
 
@@ -16,12 +21,9 @@ const VALID_ADMIN_ROLES: AdminRole[] = ["super_admin", "admin", "moderator", "pr
 export type AdminSession = {
   uid: string;
   email: string;
-  /** Current display name from the `admins` doc, falling back to email if unset. */
   name: string;
   role: AdminRole;
 };
-
-export const ADMINS_COLLECTION = "admins";
 
 /** admin & super_admin can manage the whole catalog + moderate listings. */
 export function isStaffAdmin(role: AdminRole) {
@@ -34,137 +36,94 @@ export function canModerateListings(role: AdminRole) {
 }
 
 export function areAdminCredentialsConfigured() {
-  return isFirebaseAdminReady();
+  return true;
+}
+
+function toAdminRole(role: string | null): AdminRole | null {
+  return role && VALID_ADMIN_ROLES.includes(role.toLowerCase() as AdminRole)
+    ? (role.toLowerCase() as AdminRole)
+    : null;
 }
 
 /**
- * Exchanges a Firebase client ID token (from signInWithEmailAndPassword) for
- * a session cookie, but only if the signed-in user has an entry in the
- * `admins` Firestore collection. Anyone can have a Firebase Auth account —
- * only users listed in `admins` are allowed into the admin panel.
+ * Verifies an admin's email/password directly (no more Firebase ID token —
+ * the client posts credentials straight to the login route, which calls
+ * this), and mints a session cookie if they hold a staff-ish role. Anyone
+ * can have a regular account; only accounts with a non-null `role` in the
+ * unified `users` table are allowed into the admin panel.
  */
-export async function createAdminSessionCookie(
-  idToken: string
-): Promise<{ sessionCookie: string; session: AdminSession } | { error: string; status: number }> {
-  if (!isFirebaseAdminReady()) {
-    return {
-      error: "Admin sign-in is not configured. Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in .env.local.",
-      status: 500,
-    };
+export async function createAdminSessionFromCredentials(
+  email: string,
+  password: string
+): Promise<{ token: string; expiresAt: Date; session: AdminSession } | { error: string; status: number }> {
+  const user = await db.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+
+  if (!user || !user.passwordHash) {
+    return { error: "Invalid email or password.", status: 401 };
   }
 
-  const adminAuth = getAdminAuth();
+  const role = toAdminRole(user.role);
 
-  let decoded;
-  try {
-    decoded = await adminAuth.verifyIdToken(idToken);
-  } catch (error) {
-    // Logged (rather than silently swallowed) so intermittent failures here
-    // — e.g. a cold-started instance's first outbound cert fetch timing out —
-    // leave a trail instead of only ever surfacing as a generic client error.
-    console.error("verifyIdToken failed:", error);
-    return { error: "Your sign-in expired. Please try again.", status: 401 };
-  }
-
-  const adminDoc = await getAdminDb().collection(ADMINS_COLLECTION).doc(decoded.uid).get();
-
-  if (!adminDoc.exists) {
+  if (!role) {
     return { error: "This account is not authorized for the admin panel.", status: 403 };
   }
 
-  const role = adminDoc.data()?.role as AdminRole | undefined;
+  const validPassword = await verifyPassword(user.passwordHash, password);
 
-  if (!role || !VALID_ADMIN_ROLES.includes(role)) {
-    return { error: "This account is not authorized for the admin panel.", status: 403 };
+  if (!validPassword) {
+    return { error: "Invalid email or password.", status: 401 };
   }
 
-  const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-    expiresIn: SESSION_MAX_AGE_MS,
-  });
-
-  const email = decoded.email ?? adminDoc.data()?.email ?? "";
+  const { token, expiresAt } = await createUserSession(user.id);
 
   return {
-    sessionCookie,
+    token,
+    expiresAt,
     session: {
-      uid: decoded.uid,
-      email,
-      name: (adminDoc.data()?.name as string | undefined) || email,
+      uid: user.id,
+      email: user.email,
+      name: user.name || user.email,
       role,
     },
   };
 }
 
-export function setAdminSession(response: NextResponse, sessionCookie: string) {
-  response.cookies.set({
-    name: ADMIN_SESSION_COOKIE,
-    value: sessionCookie,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE_MS / 1000,
-  });
-
-  return response;
+export function setAdminSession(response: NextResponse, token: string, expiresAt: Date) {
+  return setSessionCookie(response, token, expiresAt);
 }
 
-export function clearAdminSession(response: NextResponse) {
-  response.cookies.set({
-    name: ADMIN_SESSION_COOKIE,
-    value: "",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
-
-  return response;
+export async function clearAdminSession(response: NextResponse) {
+  const token = getSessionToken();
+  if (token) {
+    await destroySession(token);
+  }
+  return clearSessionCookie(response);
 }
 
 /**
- * Reads the session cookie (if any), verifies it against Firebase Auth, and
- * re-checks the `admins` collection so a revoked admin is logged out on
- * their very next request.
+ * Reads the session cookie (if any) and returns the signed-in user's admin
+ * role/profile, re-checking the live `users` row on every call so a revoked
+ * admin (role cleared) is logged out on their very next request.
  */
 export async function getCurrentAdmin(): Promise<AdminSession | null> {
-  if (!isFirebaseAdminReady()) {
+  const user = await getSessionUser();
+
+  if (!user) {
     return null;
   }
 
-  const sessionCookie = cookies().get(ADMIN_SESSION_COOKIE)?.value;
+  const role = toAdminRole(user.role);
 
-  if (!sessionCookie) {
+  if (!role) {
     return null;
   }
 
-  try {
-    const adminAuth = getAdminAuth();
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const adminDoc = await getAdminDb().collection(ADMINS_COLLECTION).doc(decoded.uid).get();
-
-    if (!adminDoc.exists) {
-      return null;
-    }
-
-    const role = adminDoc.data()?.role as AdminRole | undefined;
-
-    if (!role || !VALID_ADMIN_ROLES.includes(role)) {
-      return null;
-    }
-
-    const email = decoded.email ?? adminDoc.data()?.email ?? "";
-
-    return {
-      uid: decoded.uid,
-      email,
-      name: (adminDoc.data()?.name as string | undefined) || email,
-      role,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    uid: user.id,
+    email: user.email,
+    name: user.name || user.email,
+    role,
+  };
 }
 
 export async function isAdminAuthenticated() {
@@ -227,4 +186,25 @@ export async function requireModerator(): Promise<AdminSession> {
   }
 
   return admin;
+}
+
+/** Staff-admin CRUD over admin accounts — used by app/api/admin/users/*. */
+export async function listAdminUsers() {
+  const users = await db.user.findMany({
+    where: { role: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
+  });
+
+  return users.map((user) => ({
+    uid: user.id,
+    email: user.email,
+    name: user.name || user.email,
+    role: (user.role as string).toLowerCase() as AdminRole,
+    createdAtMs: user.createdAt.getTime(),
+  }));
+}
+
+export async function countSuperAdmins() {
+  return db.user.count({ where: { role: "SUPER_ADMIN" } });
 }

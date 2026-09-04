@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { ADMINS_COLLECTION, canModerateListings, getCurrentAdmin } from "@/lib/admin-auth";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { canModerateListings, getCurrentAdmin } from "@/lib/admin-auth";
+import { db } from "@/lib/db";
 
 // GET - uid -> current display name for every admin-panel account (admin /
 // super_admin / moderator / promoter).
@@ -24,14 +24,16 @@ export async function GET() {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
 
-  const snapshot = await getAdminDb().collection(ADMINS_COLLECTION).get();
+  const staff = await db.user.findMany({
+    where: { role: { not: null } },
+    select: { id: true, name: true, email: true },
+  });
 
   const names: Record<string, string> = {};
-  for (const docSnapshot of snapshot.docs) {
-    const data = docSnapshot.data();
-    const name = (data.name as string | undefined) || (data.email as string | undefined);
+  for (const person of staff) {
+    const name = person.name || person.email;
     if (name) {
-      names[docSnapshot.id] = name;
+      names[person.id] = name;
     }
   }
 

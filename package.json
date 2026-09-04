@@ -8,7 +8,8 @@
     "check-build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:admin": "node --env-file=.env.local scripts/create-admin.mjs"
+    "seed:admin": "node --env-file=.env.local scripts/create-admin.mjs",
+    "seed:admin:pg": "node --env-file=.env scripts/seed-admin-postgres.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

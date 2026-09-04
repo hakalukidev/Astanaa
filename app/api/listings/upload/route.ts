@@ -1,31 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getAdminAuth, isFirebaseAdminReady } from "@/lib/firebase-admin";
+import { getSessionUser } from "@/lib/auth/session";
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-async function getAuthenticatedUid(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-
-  if (!idToken || !isFirebaseAdminReady()) {
-    return null;
-  }
-
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
-    return decoded.uid;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const uid = await getAuthenticatedUid(request);
+    const user = await getSessionUser();
 
-    if (!uid) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

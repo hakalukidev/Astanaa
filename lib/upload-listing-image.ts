@@ -1,16 +1,11 @@
-import type { User } from "firebase/auth";
-
-export async function uploadListingImage(file: File, user: User) {
-  const idToken = await user.getIdToken();
-
+export async function uploadListingImage(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
   const response = await fetch("/api/listings/upload", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-    },
+    // Session cookie is httpOnly and same-origin, so the browser attaches
+    // it automatically — no bearer token to thread through by hand.
     body: formData,
   });
 

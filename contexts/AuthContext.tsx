@@ -1,17 +1,8 @@
 "use client";
 
 import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  updateEmail,
-  updateProfile,
-  type User,
-} from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -19,10 +10,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { db, getFirebaseAuth } from "@/lib/firebase";
+import { AuthError } from "@/lib/auth/errors";
 
-export const USERS_COLLECTION = "users";
-export const ADMINS_COLLECTION = "admins";
+export type AppUser = {
+  uid: string;
+  email: string;
+};
 
 export type UserProfile = {
   uid: string;
@@ -33,8 +26,13 @@ export type UserProfile = {
 
 export type AuthAdminRole = "super_admin" | "admin" | "moderator" | "promoter" | null;
 
+type MeResponse = {
+  user: { uid: string; name: string | null; phone: string | null; email: string } | null;
+  adminRole: AuthAdminRole;
+};
+
 type AuthContextValue = {
-  user: User | null;
+  user: AppUser | null;
   profile: UserProfile | null;
   /** Non-null if this signed-in user also has an /admin/login role (e.g. a promoter posting via the public site). */
   adminRole: AuthAdminRole;
@@ -47,60 +45,58 @@ type AuthContextValue = {
   }) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
-  /** Lets a signed-in user correct their own name/phone/email. Changing the
-   * email calls Firebase Auth's updateEmail, which throws
-   * "auth/requires-recent-login" if their session is old — callers should
-   * catch that and ask the user to log out and back in first. */
   updateUserProfile: (input: { name: string; phone: string; email: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function applyMeResponse(
+  data: MeResponse,
+  setUser: (user: AppUser | null) => void,
+  setProfile: (profile: UserProfile | null) => void,
+  setAdminRole: (role: AuthAdminRole) => void
+) {
+  if (data.user) {
+    setUser({ uid: data.user.uid, email: data.user.email });
+    setProfile({
+      uid: data.user.uid,
+      name: data.user.name ?? "",
+      phone: data.user.phone ?? "",
+      email: data.user.email,
+    });
+    setAdminRole(data.adminRole);
+  } else {
+    setUser(null);
+    setProfile(null);
+    setAdminRole(null);
+  }
+}
+
+async function parseJsonSafely(response: Response) {
+  return (await response.json().catch(() => null)) as Record<string, unknown> | null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [adminRole, setAdminRole] = useState<AuthAdminRole>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const auth = getFirebaseAuth();
-
-    if (!auth) {
-      setLoading(false);
-      return;
+  const refreshSession = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      const data = (await response.json()) as MeResponse;
+      applyMeResponse(data, setUser, setProfile, setAdminRole);
+    } catch {
+      setUser(null);
+      setProfile(null);
+      setAdminRole(null);
     }
-
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
-      setUser(nextUser);
-
-      if (nextUser && db) {
-        const [profileSnapshot, adminSnapshot] = await Promise.all([
-          getDoc(doc(db, USERS_COLLECTION, nextUser.uid)),
-          getDoc(doc(db, ADMINS_COLLECTION, nextUser.uid)).catch(() => null),
-        ]);
-        const profileData = profileSnapshot.data();
-        const adminData = adminSnapshot?.data();
-
-        setProfile({
-          uid: nextUser.uid,
-          name:
-            (typeof profileData?.name === "string" && profileData.name) ||
-            nextUser.displayName ||
-            "",
-          phone: (typeof profileData?.phone === "string" && profileData.phone) || "",
-          email: nextUser.email ?? "",
-        });
-        setAdminRole((adminData?.role as AuthAdminRole) ?? null);
-      } else {
-        setProfile(null);
-        setAdminRole(null);
-      }
-
-      setLoading(false);
-    });
-
-    return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    refreshSession().finally(() => setLoading(false));
+  }, [refreshSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -109,75 +105,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       adminRole,
       loading,
       async signUp({ name, phone, email, password }) {
-        const auth = getFirebaseAuth();
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone, email, password }),
+        });
 
-        if (!auth) {
-          throw new Error("Sign-up is not available right now.");
+        if (!response.ok) {
+          const data = await parseJsonSafely(response);
+          throw new AuthError((data?.code as string) ?? "auth/internal-error");
         }
 
-        const credential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(credential.user, { displayName: name });
-
-        if (db) {
-          await setDoc(doc(db, USERS_COLLECTION, credential.user.uid), {
-            name,
-            phone,
-            email,
-            createdAt: serverTimestamp(),
-          });
-        }
-
-        setProfile({ uid: credential.user.uid, name, phone, email });
+        const data = (await response.json()) as { user: { uid: string; name: string; phone: string; email: string } };
+        setUser({ uid: data.user.uid, email: data.user.email });
+        setProfile(data.user);
       },
       async signIn(email, password) {
-        const auth = getFirebaseAuth();
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-        if (!auth) {
-          throw new Error("Sign-in is not available right now.");
+        if (!response.ok) {
+          const data = await parseJsonSafely(response);
+          throw new AuthError((data?.code as string) ?? "auth/invalid-credential");
         }
 
-        await signInWithEmailAndPassword(auth, email, password);
+        await refreshSession();
       },
       async logOut() {
-        const auth = getFirebaseAuth();
-
-        if (!auth) {
-          return;
-        }
-
-        await signOut(auth);
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+        setUser(null);
+        setProfile(null);
+        setAdminRole(null);
       },
       async updateUserProfile({ name, phone, email }) {
-        const auth = getFirebaseAuth();
-        const currentUser = auth?.currentUser;
+        const response = await fetch("/api/auth/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone, email }),
+        });
 
-        if (!auth || !currentUser) {
-          throw new Error("You need to be logged in to update your profile.");
+        if (!response.ok) {
+          const data = await parseJsonSafely(response);
+          throw new AuthError((data?.code as string) ?? "auth/internal-error");
         }
 
-        if (name !== currentUser.displayName) {
-          await updateProfile(currentUser, { displayName: name });
-        }
-
-        if (email !== currentUser.email) {
-          // Throws "auth/requires-recent-login" on an old session — the
-          // Firestore/local state below intentionally isn't touched in that
-          // case, so the form still reflects the (unchanged) real email.
-          await updateEmail(currentUser, email);
-        }
-
-        if (db) {
-          await setDoc(
-            doc(db, USERS_COLLECTION, currentUser.uid),
-            { name, phone, email, updatedAt: serverTimestamp() },
-            { merge: true }
-          );
-        }
-
-        setProfile({ uid: currentUser.uid, name, phone, email });
+        setProfile({ uid: user?.uid ?? "", name, phone, email });
+        setUser((current) => (current ? { ...current, email } : current));
       },
     }),
-    [user, profile, adminRole, loading]
+    [user, profile, adminRole, loading, refreshSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

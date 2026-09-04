@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ADMINS_COLLECTION, getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import { countSuperAdmins, getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
+import { hashPassword } from "@/lib/auth/password";
+import { revokeAllUserSessions } from "@/lib/auth/session";
+import { db } from "@/lib/db";
 
 const VALID_ROLES: AdminRole[] = ["admin", "super_admin", "moderator", "promoter"];
+const ROLE_TO_ENUM: Record<AdminRole, "ADMIN" | "SUPER_ADMIN" | "MODERATOR" | "PROMOTER"> = {
+  admin: "ADMIN",
+  super_admin: "SUPER_ADMIN",
+  moderator: "MODERATOR",
+  promoter: "PROMOTER",
+};
 
 type RouteContext = {
   params: { uid: string };
 };
-
-async function countSuperAdmins(excludingUid?: string) {
-  const snapshot = await getAdminDb()
-    .collection(ADMINS_COLLECTION)
-    .where("role", "==", "super_admin")
-    .get();
-
-  return snapshot.docs.filter((docSnapshot) => docSnapshot.id !== excludingUid).length;
-}
 
 // PATCH - change an admin user's role, name, and/or reset their password.
 // Super admin only. Any subset of { role, name, password } may be sent.
@@ -52,26 +51,22 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const name = hasName ? (payload?.name?.trim() || null) : undefined;
-
+  const name = hasName ? payload?.name?.trim() || null : undefined;
   const password = payload?.password;
 
   if (hasPassword && (!password || password.length < 8)) {
     return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
   }
 
-  const targetRef = getAdminDb().collection(ADMINS_COLLECTION).doc(params.uid);
-  const targetDoc = await targetRef.get();
+  const target = await db.user.findUnique({ where: { id: params.uid } });
 
-  if (!targetDoc.exists) {
+  if (!target || !target.role) {
     return NextResponse.json({ error: "Admin user not found." }, { status: 404 });
   }
 
   if (hasRole) {
     const isDemotingLastSuperAdmin =
-      targetDoc.data()?.role === "super_admin" &&
-      role !== "super_admin" &&
-      (await countSuperAdmins(params.uid)) === 0;
+      target.role === "SUPER_ADMIN" && role !== "super_admin" && (await countSuperAdmins()) <= 1;
 
     if (isDemotingLastSuperAdmin) {
       return NextResponse.json(
@@ -81,43 +76,27 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
   }
 
-  if (hasName || hasPassword) {
-    try {
-      await getAdminAuth().updateUser(params.uid, {
-        ...(hasName ? { displayName: name ?? undefined } : {}),
-        ...(hasPassword ? { password } : {}),
-      });
-    } catch (error) {
-      const code = (error as { code?: string })?.code;
-
-      if (code === "auth/invalid-password") {
-        return NextResponse.json({ error: "Password does not meet Firebase's requirements." }, { status: 400 });
-      }
-
-      return NextResponse.json({ error: "Could not update this admin user." }, { status: 500 });
-    }
-
-    if (hasPassword) {
-      // Changing the password alone doesn't invalidate sessions already
-      // issued — revoke their refresh tokens so any admin-panel session they
-      // have open right now (and any session cookie verified afterward,
-      // since getCurrentAdmin() checks revocation) is kicked out immediately.
-      // They must sign in again with the new password to get back in.
-      await getAdminAuth().revokeRefreshTokens(params.uid);
-    }
-  }
-
-  await targetRef.update({
-    ...(hasRole ? { role } : {}),
-    ...(hasName ? { name } : {}),
+  await db.user.update({
+    where: { id: params.uid },
+    data: {
+      ...(hasRole ? { role: ROLE_TO_ENUM[role as AdminRole] } : {}),
+      ...(hasName ? { name } : {}),
+      ...(hasPassword ? { passwordHash: await hashPassword(password!) } : {}),
+    },
   });
+
+  if (hasPassword) {
+    // Changing the password alone doesn't invalidate sessions already
+    // issued — kick out any admin-panel session they have open right now.
+    // They must sign in again with the new password to get back in.
+    await revokeAllUserSessions(params.uid);
+  }
 
   return NextResponse.json({ success: true });
 }
 
-// DELETE - remove an admin user's access (Firebase Auth account + admins doc).
-// Super admin only.
-export async function DELETE(request: NextRequest, { params }: RouteContext) {
+// DELETE - remove an admin user's account entirely. Super admin only.
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const currentAdmin = await getCurrentAdmin();
 
   if (!currentAdmin) {
@@ -132,15 +111,13 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: "You cannot remove your own admin access." }, { status: 400 });
   }
 
-  const targetRef = getAdminDb().collection(ADMINS_COLLECTION).doc(params.uid);
-  const targetDoc = await targetRef.get();
+  const target = await db.user.findUnique({ where: { id: params.uid } });
 
-  if (!targetDoc.exists) {
+  if (!target || !target.role) {
     return NextResponse.json({ error: "Admin user not found." }, { status: 404 });
   }
 
-  const isRemovingLastSuperAdmin =
-    targetDoc.data()?.role === "super_admin" && (await countSuperAdmins(params.uid)) === 0;
+  const isRemovingLastSuperAdmin = target.role === "SUPER_ADMIN" && (await countSuperAdmins()) <= 1;
 
   if (isRemovingLastSuperAdmin) {
     return NextResponse.json(
@@ -149,11 +126,20 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  await getAdminAuth()
-    .deleteUser(params.uid)
-    .catch(() => undefined); // already gone from Auth is fine, still clean up Firestore
-
-  await targetRef.delete();
+  try {
+    await db.user.delete({ where: { id: params.uid } });
+  } catch (error) {
+    // P2003 = foreign key constraint failed — this account also owns
+    // listings/messages/etc., which Postgres (unlike Firestore) won't let
+    // us silently orphan. Clearing their role instead of deleting the
+    // account keeps their existing content intact.
+    if ((error as { code?: string })?.code === "P2003") {
+      await db.user.update({ where: { id: params.uid }, data: { role: null } });
+      await revokeAllUserSessions(params.uid);
+      return NextResponse.json({ success: true });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ success: true });
 }

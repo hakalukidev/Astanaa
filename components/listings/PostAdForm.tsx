@@ -165,7 +165,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
 
     try {
       for (const file of filesToUpload) {
-        const uploaded = await uploadListingImage(file, user);
+        const uploaded = await uploadListingImage(file);
         setPhotos((current) => [...current, uploaded]);
       }
     } catch {
@@ -249,7 +249,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
       } else {
         await createListing({
           sellerId: user.uid,
-          sellerName: profile?.name || user.displayName || "Astanaa user",
+          sellerName: profile?.name || "Astanaa user",
           sellerEmail: "",
           sellerRole: adminRole === "promoter" ? "promoter" : "client",
           ...listingFields,

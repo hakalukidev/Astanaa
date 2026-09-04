@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ADMINS_COLLECTION, getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
-import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
+import { getCurrentAdmin, type AdminRole } from "@/lib/admin-auth";
+import { hashPassword } from "@/lib/auth/password";
+import { db } from "@/lib/db";
 
 const VALID_ROLES: AdminRole[] = ["admin", "super_admin", "moderator", "promoter"];
+const ROLE_TO_ENUM: Record<AdminRole, "ADMIN" | "SUPER_ADMIN" | "MODERATOR" | "PROMOTER"> = {
+  admin: "ADMIN",
+  super_admin: "SUPER_ADMIN",
+  moderator: "MODERATOR",
+  promoter: "PROMOTER",
+};
 
 // GET - list every admin panel user. Super admin only.
 export async function GET() {
@@ -17,27 +24,25 @@ export async function GET() {
     return NextResponse.json({ error: "Only super admins can manage admin users." }, { status: 403 });
   }
 
-  const snapshot = await getAdminDb().collection(ADMINS_COLLECTION).orderBy("createdAt", "asc").get();
-
-  const users = snapshot.docs.map((docSnapshot) => {
-    const data = docSnapshot.data();
-    const createdAt = data.createdAt?.toDate?.() ?? null;
-
-    return {
-      uid: docSnapshot.id,
-      email: data.email as string,
-      name: (data.name as string | undefined) ?? null,
-      role: data.role as AdminRole,
-      createdAt: createdAt ? createdAt.toISOString() : null,
-      createdBy: (data.createdBy as string | undefined) ?? null,
-    };
+  const users = await db.user.findMany({
+    where: { role: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
   });
 
-  return NextResponse.json({ users });
+  return NextResponse.json({
+    users: users.map((user) => ({
+      uid: user.id,
+      email: user.email,
+      name: user.name,
+      role: (user.role as string).toLowerCase(),
+      createdAt: user.createdAt.toISOString(),
+      createdBy: null,
+    })),
+  });
 }
 
-// POST - create a new admin panel user (Firebase Auth account + admins doc).
-// Super admin only.
+// POST - create a new admin panel account. Super admin only.
 export async function POST(request: NextRequest) {
   const currentAdmin = await getCurrentAdmin();
 
@@ -47,10 +52,6 @@ export async function POST(request: NextRequest) {
 
   if (currentAdmin.role !== "super_admin") {
     return NextResponse.json({ error: "Only super admins can create admin users." }, { status: 403 });
-  }
-
-  if (!isFirebaseAdminReady()) {
-    return NextResponse.json({ error: "Firebase Admin is not configured." }, { status: 500 });
   }
 
   const payload = (await request.json().catch(() => null)) as
@@ -77,40 +78,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const adminAuth = getAdminAuth();
+  const existing = await db.user.findUnique({ where: { email } });
 
-  let uid: string;
-  try {
-    const userRecord = await adminAuth.createUser({
-      email,
-      password,
-      ...(name ? { displayName: name } : {}),
-    });
-    uid = userRecord.uid;
-  } catch (error) {
-    const code = (error as { code?: string })?.code;
-
-    if (code === "auth/email-already-exists") {
-      return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
-    }
-
-    if (code === "auth/invalid-password") {
-      return NextResponse.json({ error: "Password does not meet Firebase's requirements." }, { status: 400 });
-    }
-
-    return NextResponse.json({ error: "Could not create the account." }, { status: 500 });
+  if (existing) {
+    return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
   }
 
-  await getAdminDb()
-    .collection(ADMINS_COLLECTION)
-    .doc(uid)
-    .set({
+  const passwordHash = await hashPassword(password);
+
+  const user = await db.user.create({
+    data: {
       email,
       name,
-      role,
-      createdAt: new Date(),
-      createdBy: currentAdmin.uid,
-    });
+      passwordHash,
+      role: ROLE_TO_ENUM[role as AdminRole],
+    },
+  });
 
-  return NextResponse.json({ uid, email, name, role }, { status: 201 });
+  return NextResponse.json({ uid: user.id, email, name, role }, { status: 201 });
 }

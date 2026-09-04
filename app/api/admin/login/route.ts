@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { createAdminSessionCookie, setAdminSession } from "@/lib/admin-auth";
+import { createAdminSessionFromCredentials, setAdminSession } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
-  const payload = (await request.json().catch(() => null)) as { idToken?: string } | null;
-  const idToken = payload?.idToken;
+  const payload = (await request.json().catch(() => null)) as
+    | { email?: string; password?: string }
+    | null;
 
-  if (!idToken) {
-    return NextResponse.json({ message: "Missing sign-in token." }, { status: 400 });
+  const email = payload?.email?.trim();
+  const password = payload?.password;
+
+  if (!email || !password) {
+    return NextResponse.json({ message: "Email and password are required." }, { status: 400 });
   }
 
-  const result = await createAdminSessionCookie(idToken);
+  const result = await createAdminSessionFromCredentials(email, password);
 
   if ("error" in result) {
     return NextResponse.json({ message: result.error }, { status: result.status });
@@ -18,5 +22,5 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json({ success: true, role: result.session.role });
 
-  return setAdminSession(response, result.sessionCookie);
+  return setAdminSession(response, result.token, result.expiresAt);
 }
