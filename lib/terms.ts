@@ -1,10 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-
 import type { Language } from "@/contexts/LanguageContext";
-import { db } from "@/lib/firebase";
-
-export const SETTINGS_COLLECTION = "settings";
-export const TERMS_DOC_ID = "termsAndConditions";
 
 const DEFAULT_TERMS: Record<Language, string> = {
   en: `1. You must provide accurate information about yourself and the property you list.
@@ -27,45 +21,28 @@ Astanaa.com যেকোনো সময় এই শর্তাবলী প�
 
 /** Publicly readable — anyone can view the current terms before agreeing to them at signup. */
 export async function getTermsAndConditions(language: Language): Promise<string> {
-  if (!db) {
+  try {
+    const response = await fetch("/api/settings/terms");
+    if (!response.ok) return DEFAULT_TERMS[language];
+    const data = (await response.json()) as { value: Record<string, unknown> | null };
+    const perLanguageContent = data.value?.[`content_${language}`];
+    if (typeof perLanguageContent === "string" && perLanguageContent.trim()) {
+      return perLanguageContent;
+    }
+    // Fall back to the legacy single-language field for documents saved
+    // before the bn/en split existed, so nothing breaks for either language.
+    const legacyContent = data.value?.content;
+    return typeof legacyContent === "string" && legacyContent.trim() ? legacyContent : DEFAULT_TERMS[language];
+  } catch {
     return DEFAULT_TERMS[language];
   }
-
-  const snapshot = await getDoc(doc(db, SETTINGS_COLLECTION, TERMS_DOC_ID));
-
-  if (!snapshot.exists()) {
-    return DEFAULT_TERMS[language];
-  }
-
-  const data = snapshot.data();
-  const perLanguageContent = data?.[`content_${language}`];
-  if (typeof perLanguageContent === "string" && perLanguageContent.trim()) {
-    return perLanguageContent;
-  }
-
-  // Fall back to the legacy single-language field for documents saved before
-  // the bn/en split existed, so nothing breaks for either language.
-  const legacyContent = data?.content;
-  if (typeof legacyContent === "string" && legacyContent.trim()) {
-    return legacyContent;
-  }
-
-  return DEFAULT_TERMS[language];
 }
 
-/** Staff-admin only (enforced by firestore.rules) — updates the terms shown at signup. */
+/** Super-admin only (enforced server-side) — updates the terms shown at signup. */
 export async function updateTermsAndConditions(content: Record<Language, string>) {
-  if (!db) {
-    throw new Error("Terms data is not available.");
-  }
-
-  await setDoc(
-    doc(db, SETTINGS_COLLECTION, TERMS_DOC_ID),
-    {
-      content_en: content.en,
-      content_bn: content.bn,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await fetch("/api/settings/terms", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content_en: content.en, content_bn: content.bn }),
+  });
 }

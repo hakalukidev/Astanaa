@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { isFirebaseAdminReady } from "@/lib/firebase-admin";
 import { normalizeIdentifier, verifyOtp, type OtpChannel } from "@/lib/otp";
 
 export async function POST(request: Request) {
-  if (!isFirebaseAdminReady()) {
-    return NextResponse.json({ error: "OTP sign-up is not configured on the server yet." }, { status: 500 });
-  }
-
   const payload = (await request.json().catch(() => null)) as
     | { identifier?: string; channel?: OtpChannel; code?: string }
     | null;

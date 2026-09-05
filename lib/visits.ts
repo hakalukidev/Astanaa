@@ -1,9 +1,3 @@
-import { collection, doc, getDocs, increment, setDoc } from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
-
-export const VISITS_COLLECTION = "siteVisits";
-
 const LAST_VISIT_KEY = "astanaa-last-visit-date";
 
 function localDateId(date: Date) {
@@ -20,7 +14,7 @@ function localDateId(date: Date) {
  * reasonable proxy for "how many people visited" without needing billing.
  */
 export function recordVisit() {
-  if (typeof window === "undefined" || !db) {
+  if (typeof window === "undefined") {
     return;
   }
 
@@ -32,7 +26,7 @@ export function recordVisit() {
 
   window.localStorage.setItem(LAST_VISIT_KEY, today);
 
-  setDoc(doc(db, VISITS_COLLECTION, today), { count: increment(1) }, { merge: true }).catch(() => {
+  fetch("/api/visits", { method: "POST" }).catch(() => {
     // Best-effort — a failed visit count shouldn't break the page for a visitor.
   });
 }
@@ -45,36 +39,15 @@ export type VisitStats = {
   all: number;
 };
 
-/** Admin-only (enforced by firestore.rules) — sums the daily visit docs into period buckets. */
+/** Admin-only (enforced server-side) — sums the daily visit counts into period buckets. */
 export async function getVisitStats(): Promise<VisitStats> {
-  const stats: VisitStats = { today: 0, week: 0, month: 0, year: 0, all: 0 };
+  const empty: VisitStats = { today: 0, week: 0, month: 0, year: 0, all: 0 };
 
-  if (!db) {
-    return stats;
+  try {
+    const response = await fetch("/api/visits/stats");
+    if (!response.ok) return empty;
+    return (await response.json()) as VisitStats;
+  } catch {
+    return empty;
   }
-
-  const snapshot = await getDocs(collection(db, VISITS_COLLECTION));
-  const now = new Date();
-  const todayId = localDateId(now);
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-
-  snapshot.forEach((docSnapshot) => {
-    const rawCount = docSnapshot.data().count;
-    const count = typeof rawCount === "number" && Number.isFinite(rawCount) ? rawCount : 0;
-    const docDate = new Date(`${docSnapshot.id}T00:00:00`);
-
-    if (Number.isNaN(docDate.getTime())) {
-      return;
-    }
-
-    stats.all += count;
-    if (docSnapshot.id === todayId) stats.today += count;
-    if (docDate >= startOfWeek) stats.week += count;
-    if (docDate >= startOfMonth) stats.month += count;
-    if (docDate >= startOfYear) stats.year += count;
-  });
-
-  return stats;
 }

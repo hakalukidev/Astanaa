@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentAdmin, isStaffAdmin } from "@/lib/admin-auth";
-import { getAdminDb } from "@/lib/firebase-admin";
-
-const USERS_COLLECTION = "users";
+import { db } from "@/lib/db";
 
 // GET - list every signed-up site user (buyers/sellers), oldest first.
-// Staff admin only (admin / super_admin) — goes through the Admin SDK so we
-// don't have to widen the client-side Firestore rule that keeps each user's
-// profile doc readable only by themselves.
+// Staff admin only (admin / super_admin).
 export async function GET() {
   const currentAdmin = await getCurrentAdmin();
 
@@ -20,20 +16,18 @@ export async function GET() {
     return NextResponse.json({ error: "Only admins can view the user list." }, { status: 403 });
   }
 
-  const snapshot = await getAdminDb().collection(USERS_COLLECTION).orderBy("createdAt", "asc").get();
-
-  const users = snapshot.docs.map((docSnapshot) => {
-    const data = docSnapshot.data();
-    const createdAt = data.createdAt?.toDate?.() ?? null;
-
-    return {
-      uid: docSnapshot.id,
-      name: (data.name as string | undefined) ?? "",
-      phone: (data.phone as string | undefined) ?? "",
-      email: (data.email as string | undefined) ?? "",
-      createdAtMs: createdAt ? createdAt.getTime() : null,
-    };
+  const rows = await db.user.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, phone: true, email: true, createdAt: true },
   });
 
-  return NextResponse.json({ users });
+  return NextResponse.json({
+    users: rows.map((row) => ({
+      uid: row.id,
+      name: row.name ?? "",
+      phone: row.phone ?? "",
+      email: row.email,
+      createdAtMs: row.createdAt.getTime(),
+    })),
+  });
 }

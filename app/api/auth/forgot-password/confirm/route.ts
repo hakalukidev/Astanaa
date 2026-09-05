@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
+import { hashPassword } from "@/lib/auth/password";
+import { revokeAllUserSessions } from "@/lib/auth/session";
+import { db } from "@/lib/db";
 import { normalizeIdentifier, verifyOtp, type OtpChannel } from "@/lib/otp";
 
-const USERS_COLLECTION = "users";
-
 export async function POST(request: Request) {
-  if (!isFirebaseAdminReady()) {
-    return NextResponse.json({ error: "Password reset is not configured on the server yet." }, { status: 500 });
-  }
-
   const payload = (await request.json().catch(() => null)) as
     | { identifier?: string; channel?: OtpChannel; code?: string; newPassword?: string }
     | null;
@@ -38,31 +34,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: otpResult.error }, { status: 400 });
   }
 
-  try {
-    const adminAuth = getAdminAuth();
-    let uid: string;
+  const account =
+    channel === "email"
+      ? await db.user.findUnique({ where: { email: identifier } })
+      : await db.user.findUnique({ where: { phone: identifier } });
 
-    if (channel === "email") {
-      uid = (await adminAuth.getUserByEmail(identifier)).uid;
-    } else {
-      const snapshot = await getAdminDb()
-        .collection(USERS_COLLECTION)
-        .where("phone", "==", identifier)
-        .limit(1)
-        .get();
-
-      if (snapshot.empty) {
-        throw new Error("No account for this phone number.");
-      }
-
-      uid = snapshot.docs[0].id;
-    }
-
-    await adminAuth.updateUser(uid, { password: newPassword });
-  } catch (error) {
-    console.error("[forgot-password/confirm] failed to update password:", error);
+  if (!account) {
     return NextResponse.json({ error: "Could not reset your password. Please try again." }, { status: 500 });
   }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await db.user.update({
+    where: { id: account.id },
+    data: { passwordHash, legacyScryptHash: null, legacyScryptSalt: null },
+  });
+
+  // Force any existing sessions (a device someone else is using, say) to
+  // sign in again with the new password.
+  await revokeAllUserSessions(account.id);
 
   return NextResponse.json({ success: true });
 }

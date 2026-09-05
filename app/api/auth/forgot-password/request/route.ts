@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { verifyCaptcha } from "@/lib/captcha";
-import { getAdminAuth, getAdminDb, isFirebaseAdminReady } from "@/lib/firebase-admin";
+import { db } from "@/lib/db";
 import { normalizeIdentifier, sendOtp, type OtpChannel } from "@/lib/otp";
-
-const USERS_COLLECTION = "users";
 
 // Sends a password-reset OTP, but only if an account for that identifier
 // actually exists. Always returns a generic success message either way so
 // the response can't be used to probe which emails/phones are registered.
 export async function POST(request: Request) {
-  if (!isFirebaseAdminReady()) {
-    return NextResponse.json({ error: "Password reset is not configured on the server yet." }, { status: 500 });
-  }
-
   const payload = (await request.json().catch(() => null)) as
     | {
         identifier?: string;
@@ -46,25 +40,12 @@ export async function POST(request: Request) {
     );
   }
 
-  let accountExists = false;
+  const account =
+    channel === "email"
+      ? await db.user.findUnique({ where: { email: identifier } })
+      : await db.user.findUnique({ where: { phone: identifier } });
 
-  try {
-    if (channel === "email") {
-      await getAdminAuth().getUserByEmail(identifier);
-      accountExists = true;
-    } else {
-      const snapshot = await getAdminDb()
-        .collection(USERS_COLLECTION)
-        .where("phone", "==", identifier)
-        .limit(1)
-        .get();
-      accountExists = !snapshot.empty;
-    }
-  } catch {
-    accountExists = false;
-  }
-
-  if (accountExists) {
+  if (account) {
     const result = await sendOtp({ identifier, channel, purpose: "reset" });
 
     if (!result.ok) {

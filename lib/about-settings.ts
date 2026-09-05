@@ -1,11 +1,5 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-
 import type { Language } from "@/contexts/LanguageContext";
-import { db } from "@/lib/firebase";
 import { translations } from "@/lib/site-translations";
-import { SETTINGS_COLLECTION } from "@/lib/terms";
-
-export const ABOUT_DOC_ID = "about";
 
 export type AboutContent = {
   heroTitle: string;
@@ -49,7 +43,7 @@ export const DEFAULT_ABOUT_SETTINGS: AboutSettings = {
   bn: { ...translations.bn.about },
 };
 
-function mergeWithDefaults(data: Record<string, unknown> | undefined): AboutSettings {
+function mergeWithDefaults(data: Record<string, unknown> | null): AboutSettings {
   const merged: AboutSettings = {
     en: { ...DEFAULT_ABOUT_SETTINGS.en },
     bn: { ...DEFAULT_ABOUT_SETTINGS.bn },
@@ -70,28 +64,21 @@ function mergeWithDefaults(data: Record<string, unknown> | undefined): AboutSett
 
 /** Publicly readable — the About page is shown to every visitor. */
 export async function getAboutSettings(): Promise<AboutSettings> {
-  if (!db) {
+  try {
+    const response = await fetch("/api/settings/about");
+    if (!response.ok) return DEFAULT_ABOUT_SETTINGS;
+    const data = (await response.json()) as { value: Record<string, unknown> | null };
+    return mergeWithDefaults(data.value);
+  } catch {
     return DEFAULT_ABOUT_SETTINGS;
   }
-
-  const snapshot = await getDoc(doc(db, SETTINGS_COLLECTION, ABOUT_DOC_ID));
-
-  if (!snapshot.exists()) {
-    return DEFAULT_ABOUT_SETTINGS;
-  }
-
-  return mergeWithDefaults(snapshot.data());
 }
 
-/** Staff-admin only (enforced by firestore.rules) — updates the live About page content. */
+/** Super-admin only (enforced server-side) — updates the live About page content. */
 export async function updateAboutSettings(settings: AboutSettings) {
-  if (!db) {
-    throw new Error("About page settings are not available.");
-  }
-
-  await setDoc(
-    doc(db, SETTINGS_COLLECTION, ABOUT_DOC_ID),
-    { en: settings.en, bn: settings.bn, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+  await fetch("/api/settings/about", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ en: settings.en, bn: settings.bn }),
+  });
 }

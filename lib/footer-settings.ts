@@ -1,10 +1,3 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
-import { SETTINGS_COLLECTION } from "@/lib/terms";
-
-export const FOOTER_DOC_ID = "footer";
-
 export type FooterSettings = {
   aboutTextEn: string;
   aboutTextBn: string;
@@ -38,7 +31,7 @@ export const DEFAULT_FOOTER_SETTINGS: FooterSettings = {
   tiktokUrl: "",
 };
 
-function mergeWithDefaults(data: Record<string, unknown> | undefined): FooterSettings {
+function mergeWithDefaults(data: Record<string, unknown> | null): FooterSettings {
   const merged = { ...DEFAULT_FOOTER_SETTINGS };
 
   for (const key of Object.keys(merged) as (keyof FooterSettings)[]) {
@@ -53,28 +46,21 @@ function mergeWithDefaults(data: Record<string, unknown> | undefined): FooterSet
 
 /** Publicly readable — the footer is shown on every page, signed in or not. */
 export async function getFooterSettings(): Promise<FooterSettings> {
-  if (!db) {
+  try {
+    const response = await fetch("/api/settings/footer");
+    if (!response.ok) return DEFAULT_FOOTER_SETTINGS;
+    const data = (await response.json()) as { value: Record<string, unknown> | null };
+    return mergeWithDefaults(data.value);
+  } catch {
     return DEFAULT_FOOTER_SETTINGS;
   }
-
-  const snapshot = await getDoc(doc(db, SETTINGS_COLLECTION, FOOTER_DOC_ID));
-
-  if (!snapshot.exists()) {
-    return DEFAULT_FOOTER_SETTINGS;
-  }
-
-  return mergeWithDefaults(snapshot.data());
 }
 
-/** Staff-admin only (enforced by firestore.rules) — updates the live footer content. */
+/** Super-admin only (enforced server-side) — updates the live footer content. */
 export async function updateFooterSettings(settings: FooterSettings) {
-  if (!db) {
-    throw new Error("Footer settings are not available.");
-  }
-
-  await setDoc(
-    doc(db, SETTINGS_COLLECTION, FOOTER_DOC_ID),
-    { ...settings, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+  await fetch("/api/settings/footer", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
 }

@@ -1,10 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-
 import type { Language } from "@/contexts/LanguageContext";
-import { db } from "@/lib/firebase";
-import { SETTINGS_COLLECTION } from "@/lib/terms";
-
-export const RULES_DOC_ID = "rulesAndRestrictions";
 
 const DEFAULT_RULES: Record<Language, string> = {
   en: `1. Do not post fake, duplicate, or misleading listings.
@@ -29,38 +23,24 @@ Breaking these rules may lead to your listing being removed or your account bein
 
 /** Publicly readable — shown to every visitor via the footer. */
 export async function getRulesAndRestrictions(language: Language): Promise<string> {
-  if (!db) {
+  try {
+    const response = await fetch("/api/settings/rules");
+    if (!response.ok) return DEFAULT_RULES[language];
+    const data = (await response.json()) as { value: Record<string, unknown> | null };
+    const perLanguageContent = data.value?.[`content_${language}`];
+    return typeof perLanguageContent === "string" && perLanguageContent.trim()
+      ? perLanguageContent
+      : DEFAULT_RULES[language];
+  } catch {
     return DEFAULT_RULES[language];
   }
-
-  const snapshot = await getDoc(doc(db, SETTINGS_COLLECTION, RULES_DOC_ID));
-
-  if (!snapshot.exists()) {
-    return DEFAULT_RULES[language];
-  }
-
-  const data = snapshot.data();
-  const perLanguageContent = data?.[`content_${language}`];
-  if (typeof perLanguageContent === "string" && perLanguageContent.trim()) {
-    return perLanguageContent;
-  }
-
-  return DEFAULT_RULES[language];
 }
 
-/** Staff-admin only (enforced by firestore.rules) — updates the rules shown in the footer. */
+/** Super-admin only (enforced server-side) — updates the rules shown in the footer. */
 export async function updateRulesAndRestrictions(content: Record<Language, string>) {
-  if (!db) {
-    throw new Error("Rules data is not available.");
-  }
-
-  await setDoc(
-    doc(db, SETTINGS_COLLECTION, RULES_DOC_ID),
-    {
-      content_en: content.en,
-      content_bn: content.bn,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await fetch("/api/settings/rules", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content_en: content.en, content_bn: content.bn }),
+  });
 }

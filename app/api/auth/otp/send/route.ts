@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { verifyCaptcha } from "@/lib/captcha";
-import { isFirebaseAdminReady } from "@/lib/firebase-admin";
 import { normalizeIdentifier, sendOtp, type OtpChannel } from "@/lib/otp";
 
 // Sends a signup-verification OTP to an email or phone. Forgot-password OTPs
 // go through /api/auth/forgot-password/request instead, since that flow also
 // needs to confirm an account actually exists for the identifier.
 export async function POST(request: Request) {
-  if (!isFirebaseAdminReady()) {
-    return NextResponse.json({ error: "OTP sign-up is not configured on the server yet." }, { status: 500 });
-  }
-
   const payload = (await request.json().catch(() => null)) as
     | {
         identifier?: string;
