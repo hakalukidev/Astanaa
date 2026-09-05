@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyUserPassword } from "@/lib/auth/password";
 import {
   clearSessionCookie,
   createUserSession,
@@ -58,7 +58,7 @@ export async function createAdminSessionFromCredentials(
 ): Promise<{ token: string; expiresAt: Date; session: AdminSession } | { error: string; status: number }> {
   const user = await db.user.findUnique({ where: { email: email.toLowerCase().trim() } });
 
-  if (!user || !user.passwordHash) {
+  if (!user || (!user.passwordHash && !user.legacyScryptHash)) {
     return { error: "Invalid email or password.", status: 401 };
   }
 
@@ -68,7 +68,7 @@ export async function createAdminSessionFromCredentials(
     return { error: "This account is not authorized for the admin panel.", status: 403 };
   }
 
-  const validPassword = await verifyPassword(user.passwordHash, password);
+  const validPassword = await verifyUserPassword(user, password);
 
   if (!validPassword) {
     return { error: "Invalid email or password.", status: 401 };

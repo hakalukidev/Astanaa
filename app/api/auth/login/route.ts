@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyUserPassword } from "@/lib/auth/password";
 import { createUserSession, setSessionCookie } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 
@@ -18,11 +18,11 @@ export async function POST(request: Request) {
 
   const user = await db.user.findUnique({ where: { email } });
 
-  if (!user || !user.passwordHash) {
+  if (!user || (!user.passwordHash && !user.legacyScryptHash)) {
     return NextResponse.json({ code: "auth/invalid-credential" }, { status: 401 });
   }
 
-  const valid = await verifyPassword(user.passwordHash, password);
+  const valid = await verifyUserPassword(user, password);
 
   if (!valid) {
     return NextResponse.json({ code: "auth/invalid-credential" }, { status: 401 });
