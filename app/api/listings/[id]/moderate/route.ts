@@ -8,12 +8,8 @@ type RouteContext = { params: { id: string } };
 
 // POST - approve/reject a pending listing. Moderator+ only. Stamps
 // moderatedBy/moderatedByName/moderatedAt — the piece that made this a
-// separate action from the generic PATCH field-edit route.
-//
-// NOTE: the old Firestore version also wrote a notification for the seller
-// here (createListingStatusNotification). That's deferred to the
-// notifications migration pass — not wired up yet, so sellers won't see an
-// in-app notification for approvals/rejections until that lands.
+// separate action from the generic PATCH field-edit route — and notifies
+// the seller.
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const admin = await getCurrentAdmin();
 
@@ -44,6 +40,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       moderatedBy: admin.uid,
       moderatedByName: admin.name,
       moderatedAt: new Date(),
+    },
+  });
+
+  await db.notification.create({
+    data: {
+      userId: existing.sellerId,
+      type: body.status === "active" ? "LISTING_APPROVED" : "LISTING_REJECTED",
+      listingId: existing.id,
+      listingTitle: existing.title,
     },
   });
 

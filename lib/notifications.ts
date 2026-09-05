@@ -1,25 +1,6 @@
-import type {
-  DocumentData,
-  QueryDocumentSnapshot,
-  Timestamp,
-} from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-  doc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-  writeBatch,
-} from "firebase/firestore";
+"use client";
 
-import { db } from "@/lib/firebase";
-
-export const NOTIFICATIONS_COLLECTION = "notifications";
+const POLL_INTERVAL_MS = 8000;
 
 export type NotificationType = "listing_approved" | "listing_rejected";
 
@@ -33,97 +14,42 @@ export type AppNotification = {
   createdAtMs: number | null;
 };
 
-function getTimestampMs(value: unknown) {
-  if (!value) {
-    return null;
+/**
+ * Polls the signed-in user's own notifications, newest first — replaces the
+ * old live Firestore onSnapshot listener. `userId` is kept for call-site
+ * compatibility but the server always scopes to the session's own user.
+ */
+export function subscribeToUserNotifications(
+  _userId: string,
+  callback: (notifications: AppNotification[]) => void
+) {
+  let cancelled = false;
+
+  async function tick() {
+    try {
+      const response = await fetch("/api/notifications");
+      const data = (await response.json()) as { notifications: AppNotification[] };
+      if (!cancelled) callback(data.notifications);
+    } catch {
+      // Transient poll failure — keep showing whatever we had, try again.
+    }
   }
 
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    return (value as Timestamp).toMillis();
-  }
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
 
-  return typeof value === "number" ? value : null;
-}
-
-function mapNotification(
-  snapshot: QueryDocumentSnapshot<DocumentData>
-): AppNotification {
-  const data = snapshot.data();
-
-  return {
-    id: snapshot.id,
-    userId: typeof data.userId === "string" ? data.userId : "",
-    type: data.type === "listing_rejected" ? "listing_rejected" : "listing_approved",
-    listingId: typeof data.listingId === "string" ? data.listingId : "",
-    listingTitle: typeof data.listingTitle === "string" ? data.listingTitle : "",
-    read: data.read === true,
-    createdAtMs: getTimestampMs(data.createdAt),
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
   };
 }
 
-/**
- * Real-time subscription to the signed-in user's own notifications, newest
- * first. Firestore rules restrict this to `userId == request.auth.uid`, so
- * there's no risk of ever seeing someone else's.
- */
-export function subscribeToUserNotifications(
-  userId: string,
-  callback: (notifications: AppNotification[]) => void
-) {
-  if (!db || !userId) {
-    callback([]);
-    return () => {};
-  }
-
-  const notificationsQuery = query(
-    collection(db, NOTIFICATIONS_COLLECTION),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc"),
-    limit(50)
-  );
-
-  return onSnapshot(notificationsQuery, (snapshot) => {
-    callback(snapshot.docs.map(mapNotification));
-  });
-}
-
-/** Moderator+ only (enforced by firestore.rules) — fires when a listing is approved/rejected. */
-export async function createListingStatusNotification(input: {
-  userId: string;
-  listingId: string;
-  listingTitle: string;
-  type: NotificationType;
-}) {
-  if (!db || !input.userId) {
-    return;
-  }
-
-  await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
-    userId: input.userId,
-    type: input.type,
-    listingId: input.listingId,
-    listingTitle: input.listingTitle,
-    read: false,
-    createdAt: serverTimestamp(),
-  });
-}
-
 export async function markNotificationRead(id: string) {
-  if (!db) {
-    return;
-  }
-
-  await updateDoc(doc(db, NOTIFICATIONS_COLLECTION, id), { read: true });
+  await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
 }
 
-export async function markAllNotificationsRead(ids: string[]) {
-  if (!db || ids.length === 0) {
-    return;
-  }
-
-  const batch = writeBatch(db);
-  for (const id of ids) {
-    batch.update(doc(db, NOTIFICATIONS_COLLECTION, id), { read: true });
-  }
-  await batch.commit();
+/** `ids` kept for call-site compatibility — the server always marks every
+ * currently-unread notification for the session user, not a client list. */
+export async function markAllNotificationsRead(_ids: string[]) {
+  await fetch("/api/notifications/read-all", { method: "POST" });
 }

@@ -1,18 +1,6 @@
-import type { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
+"use client";
 
-import { db } from "@/lib/firebase";
-
-export const BUY_REQUESTS_COLLECTION = "buyRequests";
+const POLL_INTERVAL_MS = 8000;
 
 export type BuyRequestStatus = "pending" | "accepted" | "declined";
 
@@ -28,35 +16,8 @@ export type BuyRequest = {
   createdAtMs: number | null;
 };
 
-function getTimestampMs(value: unknown) {
-  if (!value) return null;
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    return (value as Timestamp).toMillis();
-  }
-  return typeof value === "number" ? value : null;
-}
-
-function mapBuyRequest(
-  snapshot: QueryDocumentSnapshot<DocumentData>
-): BuyRequest {
-  const data = snapshot.data();
-
-  return {
-    id: snapshot.id,
-    listingId: typeof data.listingId === "string" ? data.listingId : "",
-    listingTitle: typeof data.listingTitle === "string" ? data.listingTitle : "",
-    buyerId: typeof data.buyerId === "string" ? data.buyerId : "",
-    buyerName: typeof data.buyerName === "string" ? data.buyerName : "",
-    buyerPhone: typeof data.buyerPhone === "string" ? data.buyerPhone : "",
-    sellerId: typeof data.sellerId === "string" ? data.sellerId : "",
-    status:
-      data.status === "accepted" || data.status === "declined"
-        ? data.status
-        : "pending",
-    createdAtMs: getTimestampMs(data.createdAt),
-  };
-}
-
+/** `buyerId` is kept for call-site compatibility — the server always uses
+ * the session's own user id. Deduped per (listing, buyer) pair server-side. */
 export async function createBuyRequest(input: {
   listingId: string;
   listingTitle: string;
@@ -64,48 +25,44 @@ export async function createBuyRequest(input: {
   buyerName: string;
   buyerPhone: string;
   sellerId: string;
-}) {
-  if (!db) {
-    throw new Error("Buy requests are not available.");
-  }
-
-  // Avoid duplicate "buy" requests from the same buyer for the same listing.
-  const existingQuery = query(
-    collection(db, BUY_REQUESTS_COLLECTION),
-    where("listingId", "==", input.listingId),
-    where("buyerId", "==", input.buyerId)
-  );
-  const existing = await getDocs(existingQuery);
-
-  if (!existing.empty) {
-    return mapBuyRequest(existing.docs[0]);
-  }
-
-  const docRef = await addDoc(collection(db, BUY_REQUESTS_COLLECTION), {
-    ...input,
-    status: "pending",
-    createdAt: serverTimestamp(),
+}): Promise<BuyRequest> {
+  const response = await fetch("/api/buy-requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
 
-  return { ...input, id: docRef.id, status: "pending" as const, createdAtMs: Date.now() };
+  if (!response.ok) {
+    throw new Error("Could not send buy request.");
+  }
+
+  const data = (await response.json()) as { request: BuyRequest };
+  return data.request;
 }
 
+/** Polls buy requests addressed to the signed-in seller. `sellerId` is kept
+ * for call-site compatibility — the server always scopes to the session. */
 export function subscribeToSellerBuyRequests(
-  sellerId: string,
+  _sellerId: string,
   onChange: (requests: BuyRequest[]) => void
 ) {
-  if (!db) {
-    onChange([]);
-    return () => {};
+  let cancelled = false;
+
+  async function tick() {
+    try {
+      const response = await fetch("/api/buy-requests/mine");
+      const data = (await response.json()) as { requests: BuyRequest[] };
+      if (!cancelled) onChange(data.requests);
+    } catch {
+      // Transient poll failure — keep showing whatever we had.
+    }
   }
 
-  const requestsQuery = query(
-    collection(db, BUY_REQUESTS_COLLECTION),
-    where("sellerId", "==", sellerId),
-    orderBy("createdAt", "desc")
-  );
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
 
-  return onSnapshot(requestsQuery, (snapshot) => {
-    onChange(snapshot.docs.map(mapBuyRequest));
-  });
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }

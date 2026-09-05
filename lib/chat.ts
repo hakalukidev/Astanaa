@@ -1,26 +1,7 @@
-import type {
-  DocumentData,
-  DocumentSnapshot,
-  QueryDocumentSnapshot,
-  Timestamp,
-} from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
+"use client";
 
-import { db } from "@/lib/firebase";
-
-export const CHATS_COLLECTION = "chats";
+const MESSAGES_POLL_INTERVAL_MS = 4000;
+const CHATS_POLL_INTERVAL_MS = 6000;
 
 export type ChatThread = {
   id: string;
@@ -44,53 +25,11 @@ export type ChatMessage = {
   createdAtMs: number | null;
 };
 
-function getTimestampMs(value: unknown) {
-  if (!value) return null;
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    return (value as Timestamp).toMillis();
-  }
-  return typeof value === "number" ? value : null;
-}
-
-function mapChatThread(
-  snapshot: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot<DocumentData>
-): ChatThread {
-  const data = snapshot.data() ?? {};
-
-  return {
-    id: snapshot.id,
-    listingId: typeof data.listingId === "string" ? data.listingId : "",
-    listingTitle: typeof data.listingTitle === "string" ? data.listingTitle : "",
-    listingPhotoUrl:
-      typeof data.listingPhotoUrl === "string" ? data.listingPhotoUrl : "",
-    buyerId: typeof data.buyerId === "string" ? data.buyerId : "",
-    buyerName: typeof data.buyerName === "string" ? data.buyerName : "",
-    sellerId: typeof data.sellerId === "string" ? data.sellerId : "",
-    sellerName: typeof data.sellerName === "string" ? data.sellerName : "",
-    participantIds: Array.isArray(data.participantIds) ? data.participantIds : [],
-    lastMessage: typeof data.lastMessage === "string" ? data.lastMessage : "",
-    lastMessageAtMs: getTimestampMs(data.lastMessageAt),
-    createdAtMs: getTimestampMs(data.createdAt),
-  };
-}
-
-/** Deterministic id so re-opening chat for the same listing/buyer reuses the same thread. */
-export function buildChatId(listingId: string, buyerId: string) {
-  return `${listingId}__${buyerId}`;
-}
-
 export async function getChatById(chatId: string): Promise<ChatThread | null> {
-  if (!db) {
-    return null;
-  }
-
-  const snapshot = await getDoc(doc(db, CHATS_COLLECTION, chatId));
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  return mapChatThread(snapshot);
+  const response = await fetch(`/api/chats/${chatId}`);
+  if (!response.ok) return null;
+  const data = (await response.json()) as { chat: ChatThread | null };
+  return data.chat;
 }
 
 export async function getOrCreateChat(input: {
@@ -102,100 +41,77 @@ export async function getOrCreateChat(input: {
   sellerId: string;
   sellerName: string;
 }) {
-  if (!db) {
-    throw new Error("Chat is not available.");
-  }
-
-  const chatId = buildChatId(input.listingId, input.buyerId);
-  const chatRef = doc(db, CHATS_COLLECTION, chatId);
-  const existing = await getDoc(chatRef);
-
-  if (!existing.exists()) {
-    await setDoc(chatRef, {
-      ...input,
-      participantIds: [input.buyerId, input.sellerId],
-      lastMessage: "",
-      lastMessageAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-    });
-  }
-
-  return chatId;
-}
-
-export function subscribeToUserChats(
-  userId: string,
-  onChange: (chats: ChatThread[]) => void
-) {
-  if (!db) {
-    onChange([]);
-    return () => {};
-  }
-
-  const chatsQuery = query(
-    collection(db, CHATS_COLLECTION),
-    where("participantIds", "array-contains", userId),
-    orderBy("lastMessageAt", "desc")
-  );
-
-  return onSnapshot(chatsQuery, (snapshot) => {
-    onChange(snapshot.docs.map(mapChatThread));
+  const response = await fetch("/api/chats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
-}
 
-export function subscribeToChatMessages(
-  chatId: string,
-  onChange: (messages: ChatMessage[]) => void
-) {
-  if (!db) {
-    onChange([]);
-    return () => {};
+  if (!response.ok) {
+    throw new Error("Could not start chat.");
   }
 
-  const messagesQuery = query(
-    collection(db, CHATS_COLLECTION, chatId, "messages"),
-    orderBy("createdAt", "asc")
-  );
-
-  return onSnapshot(messagesQuery, (snapshot) => {
-    onChange(
-      snapshot.docs.map((messageSnapshot) => {
-        const data = messageSnapshot.data();
-
-        return {
-          id: messageSnapshot.id,
-          senderId: typeof data.senderId === "string" ? data.senderId : "",
-          text: typeof data.text === "string" ? data.text : "",
-          createdAtMs: getTimestampMs(data.createdAt),
-        };
-      })
-    );
-  });
+  const data = (await response.json()) as { chatId: string };
+  return data.chatId;
 }
 
-export async function sendChatMessage(
-  chatId: string,
-  senderId: string,
-  text: string
-) {
-  if (!db) {
-    throw new Error("Chat is not available.");
+/** Polls the signed-in user's own chat threads. `userId` is kept for
+ * call-site compatibility — the server always scopes to the session. */
+export function subscribeToUserChats(_userId: string, onChange: (chats: ChatThread[]) => void) {
+  let cancelled = false;
+
+  async function tick() {
+    try {
+      const response = await fetch("/api/chats");
+      const data = (await response.json()) as { chats: ChatThread[] };
+      if (!cancelled) onChange(data.chats);
+    } catch {
+      // Transient poll failure — keep showing whatever we had.
+    }
   }
 
+  tick();
+  const interval = setInterval(tick, CHATS_POLL_INTERVAL_MS);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}
+
+/** Polls one chat's messages — a shorter interval than the thread list for
+ * a more "live" feel while actually looking at a conversation. */
+export function subscribeToChatMessages(chatId: string, onChange: (messages: ChatMessage[]) => void) {
+  let cancelled = false;
+
+  async function tick() {
+    try {
+      const response = await fetch(`/api/chats/${chatId}/messages`);
+      const data = (await response.json()) as { messages: ChatMessage[] };
+      if (!cancelled) onChange(data.messages);
+    } catch {
+      // Transient poll failure — keep showing whatever we had.
+    }
+  }
+
+  tick();
+  const interval = setInterval(tick, MESSAGES_POLL_INTERVAL_MS);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}
+
+/** `senderId` is kept for call-site compatibility — the server always uses
+ * the session's own user id, never a client-supplied one. */
+export async function sendChatMessage(chatId: string, _senderId: string, text: string) {
   const trimmed = text.trim();
+  if (!trimmed) return;
 
-  if (!trimmed) {
-    return;
-  }
-
-  await addDoc(collection(db, CHATS_COLLECTION, chatId, "messages"), {
-    senderId,
-    text: trimmed,
-    createdAt: serverTimestamp(),
-  });
-
-  await updateDoc(doc(db, CHATS_COLLECTION, chatId), {
-    lastMessage: trimmed,
-    lastMessageAt: serverTimestamp(),
+  await fetch(`/api/chats/${chatId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: trimmed }),
   });
 }
