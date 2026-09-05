@@ -13,7 +13,8 @@
     "migrate:listings": "node --env-file=.env --env-file=.env.local scripts/migrate-listings-to-postgres.mjs",
     "migrate:categories": "node --env-file=.env --env-file=.env.local scripts/migrate-categories-to-postgres.mjs",
     "migrate:engagement": "node --env-file=.env --env-file=.env.local scripts/migrate-engagement-to-postgres.mjs",
-    "migrate:settings": "node --env-file=.env --env-file=.env.local scripts/migrate-settings-to-postgres.mjs"
+    "migrate:settings": "node --env-file=.env --env-file=.env.local scripts/migrate-settings-to-postgres.mjs",
+    "migrate:users": "node --env-file=.env --env-file=.env.local scripts/migrate-users-to-postgres.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
