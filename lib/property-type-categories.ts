@@ -1,26 +1,11 @@
-import type { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  serverTimestamp,
-  updateDoc,
-  writeBatch,
-} from "firebase/firestore";
+"use client";
 
 import { getOrFetch } from "@/lib/browser-cache";
-import { db } from "@/lib/firebase";
 import type { ListingPurpose } from "@/lib/listings";
-import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
 
 const CATEGORIES_CACHE_KEY = "astanaa-property-type-categories-cache";
 const CATEGORIES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-export const PROPERTY_TYPE_CATEGORIES_COLLECTION = "propertyTypeCategories";
+const POLL_INTERVAL_MS = 5000;
 
 export type PropertyTypeCategory = {
   id: string;
@@ -40,11 +25,9 @@ export type PropertyTypeCategoryInput = {
 };
 
 /**
- * The site's original hardcoded categories — used as a starting point the
- * first time an admin opens the Categories admin page (seeded into
- * Firestore then), and as a safety-net fallback everywhere else in case the
- * collection is ever empty (e.g. this feature deployed but nobody's visited
- * the admin page yet).
+ * The site's original hardcoded categories — used as a fallback if the API
+ * read ever fails (offline, etc.), so the property-type list is never
+ * empty and the Browse menu doesn't look broken.
  */
 export const DEFAULT_PROPERTY_TYPE_CATEGORIES: PropertyTypeCategoryInput[] = [
   { purpose: "rent", en: "Flat Rent", bn: "ফ্ল্যাট ভাড়া", icon: "Building2" },
@@ -66,106 +49,57 @@ export const DEFAULT_PROPERTY_TYPE_CATEGORIES: PropertyTypeCategoryInput[] = [
   { purpose: "sale", en: "Car Garage Sell", bn: "কার গ্যারেজ বিক্রি", icon: "Car" },
 ];
 
-function getTimestampMs(value: unknown) {
-  if (!value) {
-    return null;
-  }
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    return (value as Timestamp).toMillis();
-  }
-  return typeof value === "number" ? value : null;
-}
-
-function mapCategory(snapshot: QueryDocumentSnapshot<DocumentData>): PropertyTypeCategory {
-  const data = snapshot.data();
-
-  return {
-    id: snapshot.id,
-    purpose: typeof data.purpose === "string" && data.purpose ? data.purpose : "sale",
-    en: typeof data.en === "string" ? data.en : "",
-    bn: typeof data.bn === "string" ? data.bn : "",
-    icon: typeof data.icon === "string" && data.icon ? data.icon : DEFAULT_PROPERTY_TYPE_ICON,
-    order: typeof data.order === "number" ? data.order : 0,
-    createdAtMs: getTimestampMs(data.createdAt),
-  };
-}
-
-function sortCategories(categories: PropertyTypeCategory[]) {
-  return [...categories].sort((left, right) => {
-    if (left.purpose !== right.purpose) {
-      return left.purpose.localeCompare(right.purpose);
-    }
-    if (left.order !== right.order) {
-      return left.order - right.order;
-    }
-    return left.en.localeCompare(right.en);
-  });
-}
-
 const FALLBACK_CATEGORIES: PropertyTypeCategory[] = DEFAULT_PROPERTY_TYPE_CATEGORIES.map(
   (entry, index) => ({
     id: `default-${index}`,
     order: index,
     createdAtMs: null,
     ...entry,
-    icon: entry.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
+    icon: entry.icon ?? "Building2",
   })
 );
 
-/**
- * Public — the Browse menu, post-ad form, and listings filter all need this.
- * Falls back to the built-in defaults if the collection is empty (nobody has
- * opened the admin Categories page yet) OR if the read fails for any reason
- * (rules not deployed yet, offline, etc.) — the property-type list must
- * never come back empty, or the Browse menu looks broken.
- */
+async function fetchCategories(): Promise<PropertyTypeCategory[]> {
+  try {
+    const response = await fetch("/api/property-type-categories");
+    if (!response.ok) return FALLBACK_CATEGORIES;
+    const data = (await response.json()) as { categories: PropertyTypeCategory[] };
+    return data.categories.length > 0 ? data.categories : FALLBACK_CATEGORIES;
+  } catch {
+    return FALLBACK_CATEGORIES;
+  }
+}
+
+/** Public — the Browse menu, post-ad form, and listings filter all need this.
+ * Live-ish via polling (categories rarely change, but the admin Categories
+ * page needs edits to show up without a manual refresh). */
 export function subscribeToPropertyTypeCategories(
   callback: (categories: PropertyTypeCategory[]) => void
 ) {
-  if (!db) {
-    callback(FALLBACK_CATEGORIES);
-    return () => {};
+  let cancelled = false;
+
+  async function tick() {
+    const categories = await fetchCategories();
+    if (!cancelled) callback(categories);
   }
 
-  return onSnapshot(
-    collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION),
-    (snapshot) => {
-      if (snapshot.empty) {
-        callback(FALLBACK_CATEGORIES);
-        return;
-      }
-      callback(sortCategories(snapshot.docs.map(mapCategory)));
-    },
-    () => {
-      callback(FALLBACK_CATEGORIES);
-    }
-  );
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
 /**
  * Read-only, cached alternative to `subscribeToPropertyTypeCategories` for
  * public pages that just need to *display* category labels (listing cards,
- * listing detail, the post-ad picker, the TopBar browse menu). Each of these
- * used to mount its own live `onSnapshot` listener — every listing card on a
- * page independently re-reading the whole collection — which multiplied
- * Firestore reads by however many were on screen at once. Categories change
- * rarely (an admin editing them), so this fetches once and caches in
- * localStorage for `CATEGORIES_CACHE_TTL_MS`, deduping concurrent callers.
- * The admin Categories page still uses the live subscription below so edits
- * show up immediately while editing.
+ * listing detail, the post-ad picker, the TopBar browse menu) — fetches
+ * once and caches in localStorage for CATEGORIES_CACHE_TTL_MS.
  */
 export async function getPropertyTypeCategoriesCached(): Promise<PropertyTypeCategory[]> {
-  return getOrFetch(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TTL_MS, async () => {
-    if (!db) {
-      return FALLBACK_CATEGORIES;
-    }
-    try {
-      const snapshot = await getDocs(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION));
-      return snapshot.empty ? FALLBACK_CATEGORIES : sortCategories(snapshot.docs.map(mapCategory));
-    } catch {
-      return FALLBACK_CATEGORIES;
-    }
-  });
+  return getOrFetch(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TTL_MS, fetchCategories);
 }
 
 /** Buckets categories by their purpose key. Purposes with no categories yet
@@ -182,10 +116,9 @@ export function groupCategoriesByPurpose(
 }
 
 /** Resolves a listing's `propertyType` (stored as the category's English
- * label, e.g. "Flat Rent") to its display label, with the same fallback
- * chain as getListingPurposeLabel(): the live categories list, then the
- * built-in defaults (covers the moment before the list has loaded), then
- * the raw value itself so nothing ever renders blank. */
+ * label, e.g. "Flat Rent") to its display label, with a fallback chain: the
+ * live categories list, then the built-in defaults, then the raw value
+ * itself so nothing ever renders blank. */
 export function getPropertyTypeLabel(
   categories: PropertyTypeCategory[],
   propertyType: string,
@@ -202,96 +135,37 @@ export function getPropertyTypeLabel(
   return propertyType;
 }
 
-/** Staff-admin only (enforced by firestore.rules). */
+/** Staff-admin only (enforced server-side). */
 export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) {
-  if (!db) {
-    throw new Error("Category data is not available.");
-  }
-
-  const existing = await getDocs(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION));
-  const maxOrder = existing.docs
-    .map((docSnapshot) => docSnapshot.data())
-    .filter((data) => data.purpose === input.purpose)
-    .reduce((max, data) => Math.max(max, typeof data.order === "number" ? data.order : 0), -1);
-
-  await addDoc(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION), {
-    ...input,
-    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
-    order: maxOrder + 1,
-    createdAt: serverTimestamp(),
-  });
-}
-
-/**
- * Renaming a category's `en` label would otherwise strand every listing that
- * already stored the old label as its `propertyType` (listings reference
- * categories by that string, not by id) — they'd silently vanish from that
- * category's browse/filter/count views. This rewrites `propertyType` on every
- * matching listing to the new label so old posts stay put.
- */
-async function migrateListingsPropertyType(previousEn: string, nextEn: string) {
-  if (previousEn === nextEn) {
-    return;
-  }
-
-  // Listings live in Postgres now (categories themselves haven't migrated
-  // yet) — this cascade is a bulk UPDATE behind an API route instead of a
-  // direct Firestore batch write.
-  await fetch("/api/admin/listings/migrate-property-type", {
+  await fetch("/api/property-type-categories", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ previousEn, nextEn }),
+    body: JSON.stringify(input),
   });
 }
 
-/** Staff-admin only (enforced by firestore.rules). */
+/** Staff-admin only. Renaming `en` cascades to every listing that already
+ * used the old label as its propertyType — handled atomically server-side. */
 export async function updatePropertyTypeCategory(id: string, input: PropertyTypeCategoryInput) {
-  if (!db) {
-    throw new Error("Category data is not available.");
-  }
-
-  const categoryRef = doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id);
-  const existingSnapshot = await getDoc(categoryRef);
-  const previousEn = existingSnapshot.exists() ? (existingSnapshot.data().en as string | undefined) : undefined;
-
-  await updateDoc(categoryRef, {
-    ...input,
-    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
+  await fetch(`/api/property-type-categories/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
-
-  if (previousEn && previousEn !== input.en) {
-    await migrateListingsPropertyType(previousEn, input.en);
-  }
 }
 
-/** Staff-admin only (enforced by firestore.rules). */
+/** Staff-admin only. */
 export async function deletePropertyTypeCategory(id: string) {
-  if (!db) {
-    throw new Error("Category data is not available.");
-  }
-
-  await deleteDoc(doc(db, PROPERTY_TYPE_CATEGORIES_COLLECTION, id));
+  await fetch(`/api/property-type-categories/${id}`, { method: "DELETE" });
 }
 
 /**
- * One-time bulk write of the built-in defaults, called automatically by the
- * admin Categories page the first time it finds the collection empty. After
- * this, Firestore is the sole source of truth and admins can add/edit/delete
- * freely.
+ * Kept for interface compatibility with the admin Categories page's
+ * "seed if empty" bootstrap — a no-op now since the migration script
+ * already backfilled Postgres with the real category data (see
+ * scripts/migrate-categories-to-postgres.mjs), so the table is never
+ * actually empty in practice.
  */
 export async function seedDefaultPropertyTypeCategories() {
-  if (!db) {
-    throw new Error("Category data is not available.");
-  }
-
-  const batch = writeBatch(db);
-  const byPurposeCounter: Record<string, number> = { rent: 0, sale: 0 };
-
-  for (const entry of DEFAULT_PROPERTY_TYPE_CATEGORIES) {
-    const order = byPurposeCounter[entry.purpose]++;
-    const docRef = doc(collection(db, PROPERTY_TYPE_CATEGORIES_COLLECTION));
-    batch.set(docRef, { ...entry, order, createdAt: serverTimestamp() });
-  }
-
-  await batch.commit();
+  return;
 }

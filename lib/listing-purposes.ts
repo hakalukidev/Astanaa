@@ -1,33 +1,17 @@
-import type { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  serverTimestamp,
-  updateDoc,
-  writeBatch,
-} from "firebase/firestore";
+"use client";
 
 import { getOrFetch } from "@/lib/browser-cache";
-import { db } from "@/lib/firebase";
-import { DEFAULT_PROPERTY_TYPE_ICON } from "@/lib/property-type-icons";
-
-export const LISTING_PURPOSES_COLLECTION = "listingPurposes";
 
 const PURPOSES_CACHE_KEY = "astanaa-listing-purposes-cache";
 const PURPOSES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const POLL_INTERVAL_MS = 5000;
 
 /**
  * A top-level "purpose" (For Rent, For Sale, and whatever an admin adds
  * beyond those) that Property Type Categories hang off of. `key` is the
  * stable, machine-readable id stored on every listing (`listing.purpose`)
- * and category (`category.purpose`) — it's generated once from the English
- * name at creation time and never changes, so renaming a purpose's display
- * text later can't orphan listings that already reference it. `en`/`bn`/
- * `icon` are the editable display bits.
+ * and category (`category.purpose`) — generated once from the English name
+ * at creation time and never changes.
  */
 export type ListingPurposeRecord = {
   id: string;
@@ -45,111 +29,64 @@ export type ListingPurposeInput = {
   icon?: string;
 };
 
-/** The site's original two purposes — seeded into Firestore the first time
- * an admin opens the Listing Purposes admin page, and used as a safety-net
- * fallback everywhere else if the collection is ever empty. */
+/** The site's original two purposes — used as a fallback if the API read
+ * ever fails, so the Browse menu/post-ad form never has nothing to show. */
 export const DEFAULT_LISTING_PURPOSES: (ListingPurposeInput & { key: string })[] = [
   { key: "rent", en: "For Rent", bn: "ভাড়ার জন্য", icon: "KeyRound" },
   { key: "sale", en: "For Sale", bn: "বিক্রির জন্য", icon: "Tag" },
 ];
 
-function getTimestampMs(value: unknown) {
-  if (!value) {
-    return null;
-  }
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    return (value as Timestamp).toMillis();
-  }
-  return typeof value === "number" ? value : null;
-}
-
-function mapPurpose(snapshot: QueryDocumentSnapshot<DocumentData>): ListingPurposeRecord {
-  const data = snapshot.data();
-
-  return {
-    id: snapshot.id,
-    key: typeof data.key === "string" && data.key ? data.key : snapshot.id,
-    en: typeof data.en === "string" ? data.en : "",
-    bn: typeof data.bn === "string" ? data.bn : "",
-    icon: typeof data.icon === "string" && data.icon ? data.icon : DEFAULT_PROPERTY_TYPE_ICON,
-    order: typeof data.order === "number" ? data.order : 0,
-    createdAtMs: getTimestampMs(data.createdAt),
-  };
-}
-
-function sortPurposes(purposes: ListingPurposeRecord[]) {
-  return [...purposes].sort((left, right) => {
-    if (left.order !== right.order) {
-      return left.order - right.order;
-    }
-    return left.en.localeCompare(right.en);
-  });
-}
-
 const FALLBACK_PURPOSES: ListingPurposeRecord[] = DEFAULT_LISTING_PURPOSES.map((entry, index) => ({
   id: `default-${index}`,
   order: index,
   createdAtMs: null,
-  icon: entry.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
   ...entry,
+  icon: entry.icon ?? "Tag",
 }));
 
 export function isFallbackPurpose(purpose: ListingPurposeRecord) {
   return purpose.id.startsWith("default-");
 }
 
-/** Public — the Browse menu, post-ad form, and listings filter all need this.
- * Falls back to the built-in rent/sale pair if the collection is empty
- * (nobody has opened the admin Listing Purposes page yet) OR if the read
- * fails for any reason — the purpose list must never come back empty, or
- * the Browse menu and post-ad form have nothing to show. */
+async function fetchPurposes(): Promise<ListingPurposeRecord[]> {
+  try {
+    const response = await fetch("/api/listing-purposes");
+    if (!response.ok) return FALLBACK_PURPOSES;
+    const data = (await response.json()) as { purposes: ListingPurposeRecord[] };
+    return data.purposes.length > 0 ? data.purposes : FALLBACK_PURPOSES;
+  } catch {
+    return FALLBACK_PURPOSES;
+  }
+}
+
+/** Public — the Browse menu, post-ad form, and listings filter all need
+ * this. Polled so admin edits show up without a manual refresh. */
 export function subscribeToListingPurposes(callback: (purposes: ListingPurposeRecord[]) => void) {
-  if (!db) {
-    callback(FALLBACK_PURPOSES);
-    return () => {};
+  let cancelled = false;
+
+  async function tick() {
+    const purposes = await fetchPurposes();
+    if (!cancelled) callback(purposes);
   }
 
-  return onSnapshot(
-    collection(db, LISTING_PURPOSES_COLLECTION),
-    (snapshot) => {
-      if (snapshot.empty) {
-        callback(FALLBACK_PURPOSES);
-        return;
-      }
-      callback(sortPurposes(snapshot.docs.map(mapPurpose)));
-    },
-    () => {
-      callback(FALLBACK_PURPOSES);
-    }
-  );
+  tick();
+  const interval = setInterval(tick, POLL_INTERVAL_MS);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
 }
 
-/**
- * Read-only, cached alternative to `subscribeToListingPurposes` for public
- * pages that just need to *display* purpose labels (listing cards, listing
- * detail, the post-ad picker, the TopBar browse menu) — see the matching
- * `getPropertyTypeCategoriesCached` in `lib/property-type-categories.ts` for
- * why this exists (each consumer used to mount its own live listener). The
- * admin Listing Purposes page still uses the live subscription above.
- */
+/** Read-only, cached alternative to `subscribeToListingPurposes` for public
+ * pages that just need to *display* purpose labels. */
 export async function getListingPurposesCached(): Promise<ListingPurposeRecord[]> {
-  return getOrFetch(PURPOSES_CACHE_KEY, PURPOSES_CACHE_TTL_MS, async () => {
-    if (!db) {
-      return FALLBACK_PURPOSES;
-    }
-    try {
-      const snapshot = await getDocs(collection(db, LISTING_PURPOSES_COLLECTION));
-      return snapshot.empty ? FALLBACK_PURPOSES : sortPurposes(snapshot.docs.map(mapPurpose));
-    } catch {
-      return FALLBACK_PURPOSES;
-    }
-  });
+  return getOrFetch(PURPOSES_CACHE_KEY, PURPOSES_CACHE_TTL_MS, fetchPurposes);
 }
 
-/** Resolves a listing's/category's purpose `key` to its display label, with a
- * sensible fallback chain: the live (possibly admin-edited) purposes list,
- * then the built-in rent/sale defaults (covers the moment before the list
- * has loaded), then the raw key itself so nothing ever renders blank. */
+/** Resolves a listing's/category's purpose `key` to its display label, with
+ * a fallback chain: the live purposes list, then the built-in rent/sale
+ * defaults, then the raw key itself so nothing ever renders blank. */
 export function getListingPurposeLabel(
   purposes: ListingPurposeRecord[],
   key: string,
@@ -166,87 +103,33 @@ export function getListingPurposeLabel(
   return key;
 }
 
-function slugify(value: string) {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return slug || "purpose";
-}
-
-/** Staff-admin only (enforced by firestore.rules). Generates a stable `key`
- * from the English name, disambiguated against existing keys so two
- * purposes can never collide (and silently overwrite each other's listings). */
+/** Staff-admin only (enforced server-side). Generates a stable `key` from
+ * the English name, disambiguated against existing keys. */
 export async function addListingPurpose(input: ListingPurposeInput) {
-  if (!db) {
-    throw new Error("Purpose data is not available.");
-  }
-
-  const existing = await getDocs(collection(db, LISTING_PURPOSES_COLLECTION));
-  const existingKeys = new Set(existing.docs.map((docSnapshot) => docSnapshot.data().key));
-  const maxOrder = existing.docs.reduce(
-    (max, docSnapshot) => Math.max(max, typeof docSnapshot.data().order === "number" ? docSnapshot.data().order : 0),
-    -1
-  );
-
-  const baseKey = slugify(input.en);
-  let key = baseKey;
-  let suffix = 2;
-  while (existingKeys.has(key)) {
-    key = `${baseKey}-${suffix}`;
-    suffix += 1;
-  }
-
-  await addDoc(collection(db, LISTING_PURPOSES_COLLECTION), {
-    key,
-    en: input.en,
-    bn: input.bn,
-    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
-    order: maxOrder + 1,
-    createdAt: serverTimestamp(),
+  await fetch("/api/listing-purposes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
 }
 
-/** Staff-admin only. Only the display bits (en/bn/icon) are editable — `key`
- * is set once at creation and left alone so existing listings/categories
- * that reference it keep matching. */
+/** Staff-admin only. Only the display bits (en/bn/icon) are editable —
+ * `key` is set once at creation. */
 export async function updateListingPurpose(id: string, input: ListingPurposeInput) {
-  if (!db) {
-    throw new Error("Purpose data is not available.");
-  }
-
-  await updateDoc(doc(db, LISTING_PURPOSES_COLLECTION, id), {
-    en: input.en,
-    bn: input.bn,
-    icon: input.icon ?? DEFAULT_PROPERTY_TYPE_ICON,
+  await fetch(`/api/listing-purposes/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
 }
 
 /** Staff-admin only. */
 export async function deleteListingPurpose(id: string) {
-  if (!db) {
-    throw new Error("Purpose data is not available.");
-  }
-
-  await deleteDoc(doc(db, LISTING_PURPOSES_COLLECTION, id));
+  await fetch(`/api/listing-purposes/${id}`, { method: "DELETE" });
 }
 
-/** One-time bulk write of the built-in rent/sale pair, called automatically
- * by the admin Listing Purposes page the first time it finds the collection
- * empty. After this, Firestore is the sole source of truth. */
+/** Kept for interface compatibility — a no-op now that Postgres is
+ * pre-seeded by the migration script. */
 export async function seedDefaultListingPurposes() {
-  if (!db) {
-    throw new Error("Purpose data is not available.");
-  }
-  const firestore = db;
-
-  const batch = writeBatch(firestore);
-
-  DEFAULT_LISTING_PURPOSES.forEach((entry, index) => {
-    const docRef = doc(collection(firestore, LISTING_PURPOSES_COLLECTION));
-    batch.set(docRef, { ...entry, order: index, createdAt: serverTimestamp() });
-  });
-
-  await batch.commit();
+  return;
 }
