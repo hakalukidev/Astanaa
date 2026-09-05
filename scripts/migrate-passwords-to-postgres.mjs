@@ -37,7 +37,8 @@ async function main() {
   let totalUsers = 0;
   let withHash = 0;
   let updated = 0;
-  let noMatchingRow = 0;
+  let created = 0;
+  let skipped = 0;
 
   do {
     const page = await auth.listUsers(1000, pageToken);
@@ -53,24 +54,51 @@ async function main() {
 
       const existing = await db.user.findUnique({ where: { id: record.uid } });
 
-      if (!existing) {
-        console.warn(`passwords: no Postgres row for uid ${record.uid} (${record.email ?? "no email"}) — skipping.`);
-        noMatchingRow++;
+      if (existing) {
+        await db.user.update({
+          where: { id: record.uid },
+          data: { legacyScryptHash: record.passwordHash, legacyScryptSalt: record.passwordSalt },
+        });
+        updated++;
         continue;
       }
 
-      await db.user.update({
-        where: { id: record.uid },
-        data: { legacyScryptHash: record.passwordHash, legacyScryptSalt: record.passwordSalt },
-      });
-      updated++;
+      // Auth account exists but no Postgres row at all — this happens when
+      // the Firestore `users` profile doc was never written (e.g. a quota
+      // outage interrupted signup right after the Auth account was
+      // created). Create a minimal row from the Auth record itself so the
+      // account isn't lost; name/phone stay unset since nothing recorded
+      // them anywhere reachable.
+      if (!record.email) {
+        console.warn(`passwords: uid ${record.uid} has no email on the Auth record — skipping.`);
+        skipped++;
+        continue;
+      }
+
+      try {
+        await db.user.create({
+          data: {
+            id: record.uid,
+            email: record.email.toLowerCase(),
+            name: record.displayName || null,
+            phone: record.phoneNumber || null,
+            legacyScryptHash: record.passwordHash,
+            legacyScryptSalt: record.passwordSalt,
+          },
+        });
+        created++;
+      } catch (error) {
+        console.warn(`passwords: could not create a row for uid ${record.uid} (${record.email}) — ${error.message}`);
+        skipped++;
+      }
     }
   } while (pageToken);
 
   console.log(`Firebase Auth users seen: ${totalUsers}`);
   console.log(`With a password hash: ${withHash}`);
-  console.log(`Updated in Postgres: ${updated}`);
-  console.log(`Skipped (no matching Postgres row): ${noMatchingRow}`);
+  console.log(`Updated existing Postgres rows: ${updated}`);
+  console.log(`Created missing Postgres rows: ${created}`);
+  console.log(`Skipped: ${skipped}`);
 }
 
 main()
