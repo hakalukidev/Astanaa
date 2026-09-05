@@ -101,7 +101,21 @@ async function migrateAdmins() {
       const existing = await db.user.findUnique({ where: { id: doc.id } });
 
       if (existing) {
-        await db.user.update({ where: { id: doc.id }, data: { role, name: data.name || existing.name } });
+        // Some admin accounts (e.g. the original bootstrap super_admin from
+        // scripts/create-admin.mjs) never had a `users` Firestore doc at
+        // all, so migrateUsers() above never touched their row — it's
+        // still sitting on the placeholder email from whenever a shadow
+        // row first got created (moderating a listing, etc). Overwrite it
+        // with the real email here too, not just role/name.
+        const isPlaceholderEmail = existing.email.endsWith("@migrated.astanaa.local");
+        await db.user.update({
+          where: { id: doc.id },
+          data: {
+            role,
+            name: data.name || existing.name,
+            email: email && isPlaceholderEmail ? email : undefined,
+          },
+        });
         updated++;
       } else if (email) {
         await db.user.create({
