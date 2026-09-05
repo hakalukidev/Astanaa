@@ -365,3 +365,23 @@ model Otp {
 
   @@map("otps")
 }
+
+// Homepage hero/promotional banner carousel — despite living next to the
+// dead products/categories catalog in Firestore, this one is live (see
+// components/home/HeroSlider.tsx).
+model Slide {
+  id            String   @id @default(cuid())
+  title         String
+  image         String
+  imagePublicId String   @map("image_public_id")
+  order         Int      @default(0)
+  isActive      Boolean  @default(true) @map("is_active")
+  tag           String   @default("Featured")
+  cta           String   @default("VIEW PRODUCTS")
+  ctaHref       String   @default("/products") @map("cta_href")
+  bg            String   @default("bg-slate-100")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("slides")
+}

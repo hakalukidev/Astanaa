@@ -15,7 +15,8 @@
     "migrate:engagement": "node --env-file=.env --env-file=.env.local scripts/migrate-engagement-to-postgres.mjs",
     "migrate:settings": "node --env-file=.env --env-file=.env.local scripts/migrate-settings-to-postgres.mjs",
     "migrate:users": "node --env-file=.env --env-file=.env.local scripts/migrate-users-to-postgres.mjs",
-    "migrate:passwords": "node --env-file=.env --env-file=.env.local scripts/migrate-passwords-to-postgres.mjs"
+    "migrate:passwords": "node --env-file=.env --env-file=.env.local scripts/migrate-passwords-to-postgres.mjs",
+    "migrate:slides": "node --env-file=.env --env-file=.env.local scripts/migrate-slides-to-postgres.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

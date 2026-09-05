@@ -1,69 +1,39 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
-import {
-  mapSlideSnapshot,
-  SLIDES_COLLECTION,
-  sortSlides,
-  type Slide,
-  type SlideInput,
-} from "@/lib/slides";
+import { sortSlides, type Slide, type SlideInput } from "@/lib/slides";
 
 export async function getAllSlides(): Promise<Slide[]> {
-  if (!db) {
+  try {
+    const response = await fetch("/api/slides");
+    if (!response.ok) return [];
+    const data = (await response.json()) as { slides: Slide[] };
+    return sortSlides(data.slides);
+  } catch {
     return [];
   }
-
-  const snapshot = await getDocs(collection(db, SLIDES_COLLECTION));
-
-  return sortSlides(
-    snapshot.docs
-      .map((documentSnapshot) => mapSlideSnapshot(documentSnapshot))
-      .filter((slide): slide is Slide => Boolean(slide))
-  );
 }
 
-function getSlidesCollection() {
-  if (!db) {
-    throw new Error("Slide data is not available.");
+export async function createSlide(input: SlideInput): Promise<Slide> {
+  const response = await fetch("/api/slides", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not create slide.");
   }
 
-  return collection(db, SLIDES_COLLECTION);
-}
-
-export async function createSlide(input: SlideInput) {
-  const slidesCollection = getSlidesCollection();
-
-  return addDoc(slidesCollection, {
-    ...input,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  const data = (await response.json()) as { slide: Slide };
+  return data.slide;
 }
 
 export async function updateSlide(id: string, input: SlideInput) {
-  if (!db) {
-    throw new Error("Slide data is not available.");
-  }
-
-  return updateDoc(doc(db, SLIDES_COLLECTION, id), {
-    ...input,
-    updatedAt: serverTimestamp(),
+  await fetch(`/api/slides/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
 }
 
 export async function deleteSlide(id: string) {
-  if (!db) {
-    throw new Error("Slide data is not available.");
-  }
-
-  return deleteDoc(doc(db, SLIDES_COLLECTION, id));
+  await fetch(`/api/slides/${id}`, { method: "DELETE" });
 }
