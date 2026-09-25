@@ -17,8 +17,7 @@
     "migrate:users": "node --env-file=.env --env-file=.env.local scripts/migrate-users-to-postgres.mjs",
     "migrate:passwords": "node --env-file=.env --env-file=.env.local scripts/migrate-passwords-to-postgres.mjs",
     "migrate:slides": "node --env-file=.env --env-file=.env.local scripts/migrate-slides-to-postgres.mjs",
-    "migrate:images": "node --env-file=.env --env-file=.env.local scripts/migrate-images-to-local.mjs",
-    "backup:cloudinary": "node --env-file=.env --env-file=.env.local scripts/backup-cloudinary.mjs"
+    "migrate:images": "node --env-file=.env --env-file=.env.local scripts/migrate-images-to-local.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { deleteManagedProductImages } from "@/lib/product-image-service";
 import {
-  extractCloudinaryPublicId,
+  extractImagePublicId,
 } from "@/lib/product-images";
 import {
   getCategoryKey,
@@ -115,7 +115,7 @@ export function toProductInput(values: ProductFormValues): ProductInput {
         .filter(Boolean)
         .concat(
           photoUrls
-            .map((photoUrl) => extractCloudinaryPublicId(photoUrl) ?? "")
+            .map((photoUrl) => extractImagePublicId(photoUrl) ?? "")
             .filter(Boolean)
         )
     )
@@ -268,7 +268,7 @@ export default function ProductForm({
 
   function syncPhotoPublicIds(photoUrlsText: string, nextPublicIds: string[] = []) {
     const derivedPublicIds = parseImageUrls(photoUrlsText)
-      .map((photoUrl) => extractCloudinaryPublicId(photoUrl) ?? "")
+      .map((photoUrl) => extractImagePublicId(photoUrl) ?? "")
       .filter(Boolean);
     const uniquePublicIds = Array.from(
       new Set(
@@ -326,7 +326,7 @@ export default function ProductForm({
       (photoUrl) => photoUrl !== urlToRemove
     );
     const nextPhotoUrlsText = nextUrls.join("\n");
-    const removedPublicId = extractCloudinaryPublicId(urlToRemove) ?? "";
+    const removedPublicId = extractImagePublicId(urlToRemove) ?? "";
     const nextPublicIds = form
       .getValues("photoPublicIds")
       .filter((publicId) => publicId !== removedPublicId);

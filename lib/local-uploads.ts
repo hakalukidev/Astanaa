@@ -39,7 +39,7 @@ function resolveInsideUploadsDir(relativePath: string) {
 /**
  * Stores the image as a resized webp plus a square thumbnail. The public id
  * is the path without extension (e.g. "listings/2026/09/<uuid>"), which
- * mirrors how Cloudinary public ids looked so the DB columns keep working.
+ * matches the public ids already stored in the DB from before.
  */
 export async function saveImageUpload(file: File, folder: string): Promise<SavedUpload> {
   if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp)$/i.test(file.name)) {
@@ -82,7 +82,7 @@ export async function saveImageUpload(file: File, folder: string): Promise<Saved
   return { url: `${LOCAL_UPLOADS_URL_PREFIX}/${publicId}.webp`, publicId };
 }
 
-/** Returns "ok" when the image existed, "not found" otherwise (same as Cloudinary). */
+/** Returns "ok" when the image existed, "not found" otherwise. */
 export async function deleteImageUpload(publicId: string): Promise<"ok" | "not found"> {
   if (!PUBLIC_ID_PATTERN.test(publicId)) {
     throw new UploadValidationError("Invalid image id.");

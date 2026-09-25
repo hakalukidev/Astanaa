@@ -1,5 +1,5 @@
 // One-time migration: moves every Cloudinary image referenced in Postgres onto
-// the VPS disk (from the backup made by scripts/backup-cloudinary.mjs) and
+// the VPS disk (from a backup of the Cloudinary account + its manifest.json) and
 // rewrites the stored URLs to /uploads/<public_id>.webp.
 //
 // Public ids are kept as-is, so photo_public_ids / image_public_id columns

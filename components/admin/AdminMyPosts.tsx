@@ -76,7 +76,7 @@ export default function AdminMyPosts({ uid, name }: AdminMyPostsProps) {
                     {getPrimaryListingPhotoUrl(listing) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={getListingThumbnailUrl(getPrimaryListingPhotoUrl(listing), 100)}
+                        src={getListingThumbnailUrl(getPrimaryListingPhotoUrl(listing))}
                         alt=""
                         loading="lazy"
                         className="h-full w-full object-cover"
