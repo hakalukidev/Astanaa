@@ -25,7 +25,15 @@ export async function GET(request: NextRequest) {
   const rows = await db.listing.findMany({
     where: statusParam ? { status: STATUS_TO_DB[statusParam] } : undefined,
     orderBy: { createdAt: "desc" },
+    include: { seller: { select: { email: true } } },
   });
 
-  return NextResponse.json({ listings: rows.map(mapListingRow) });
+  // Staff-only: the seller's account email, so admins can search posts by it.
+  // Kept out of the public listing APIs.
+  return NextResponse.json({
+    listings: rows.map((row) => ({
+      ...mapListingRow(row),
+      sellerAccountEmail: row.seller.email ?? "",
+    })),
+  });
 }

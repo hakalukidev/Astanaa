@@ -107,15 +107,18 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
     return listings.filter((listing) => {
       const matchesStatus = statusFilter === "all" || listing.status === statusFilter;
       const sellerName = resolveStaffName(staffNames, listing.sellerId, listing.sellerName);
+      const postSerial = postSerialsById.get(listing.id) ?? "";
       const matchesSearch =
         !normalizedSearch ||
-        listing.title.toLowerCase().includes(normalizedSearch) ||
+        postSerial.toLowerCase().includes(normalizedSearch) ||
         listing.location.toLowerCase().includes(normalizedSearch) ||
-        sellerName.toLowerCase().includes(normalizedSearch);
+        sellerName.toLowerCase().includes(normalizedSearch) ||
+        listing.sellerEmail.toLowerCase().includes(normalizedSearch) ||
+        (listing.sellerAccountEmail ?? "").toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
     });
-  }, [listings, statusFilter, deferredSearchTerm, staffNames]);
+  }, [listings, statusFilter, deferredSearchTerm, staffNames, postSerialsById]);
 
   async function handleApprove(listing: Listing) {
     setPendingId(listing.id);
@@ -246,7 +249,7 @@ export default function AdminPostsPage({ role, adminUid, adminName }: AdminPosts
               <Input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search by title, location, or seller"
+                placeholder="Search by post number, location, seller, or email"
                 className="pl-9 focus-visible:ring-blue-500"
               />
             </div>

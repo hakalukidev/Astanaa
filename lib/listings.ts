@@ -51,6 +51,8 @@ export type Listing = {
   sellerPhone: string;
   sellerWhatsapp: string;
   sellerEmail: string;
+  /** Seller's account email — only present on the staff-only admin feed. */
+  sellerAccountEmail?: string;
   sellerRole: "client" | "promoter";
   title: string;
   description: string;
