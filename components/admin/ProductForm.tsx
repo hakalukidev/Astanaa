@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import CloudinaryUploadButton from "@/components/admin/CloudinaryUploadButton";
+import ImageUploadButton from "@/components/admin/ImageUploadButton";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -522,7 +522,7 @@ export default function ProductForm({
                         }}
                       />
                     </FormControl>
-                    <CloudinaryUploadButton
+                    <ImageUploadButton
                       disabled={isSubmitting}
                       label={uploadButtonLabel}
                       onUploaded={({ url, publicId }) => {

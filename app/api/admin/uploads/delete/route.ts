@@ -1,45 +1,7 @@
-import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 
 import { isAdminAuthenticated } from "@/lib/admin-auth";
-
-type CloudinaryDeleteConfig = {
-  apiKey: string;
-  apiSecret: string;
-  cloudName: string;
-};
-
-function getCloudinaryDeleteConfig(): CloudinaryDeleteConfig | null {
-  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-  const cloudName =
-    process.env.CLOUDINARY_CLOUD_NAME?.trim() ??
-    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
-
-  if (!apiKey || !apiSecret || !cloudName) {
-    return null;
-  }
-
-  return {
-    apiKey,
-    apiSecret,
-    cloudName,
-  };
-}
-
-function createCloudinarySignature(
-  params: Record<string, string>,
-  apiSecret: string
-) {
-  const signatureBase = Object.entries(params)
-    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("&");
-
-  return createHash("sha1")
-    .update(`${signatureBase}${apiSecret}`)
-    .digest("hex");
-}
+import { UploadValidationError, deleteImageUpload } from "@/lib/local-uploads";
 
 export async function POST(request: Request) {
   if (!(await isAdminAuthenticated())) {
@@ -53,74 +15,25 @@ export async function POST(request: Request) {
 
   if (!publicId) {
     return NextResponse.json(
-      { message: "A Cloudinary public id is required." },
+      { message: "An image public id is required." },
       { status: 400 }
     );
   }
 
-  const config = getCloudinaryDeleteConfig();
+  try {
+    const result = await deleteImageUpload(publicId);
 
-  if (!config) {
-    return NextResponse.json(
-      {
-        message:
-          "Cloudinary delete credentials are missing. Set CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.",
-      },
-      { status: 503 }
-    );
-  }
-
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signature = createCloudinarySignature(
-    {
-      invalidate: "true",
-      public_id: publicId,
-      timestamp,
-    },
-    config.apiSecret
-  );
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${config.cloudName}/image/destroy`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        api_key: config.apiKey,
-        invalidate: "true",
-        public_id: publicId,
-        signature,
-        timestamp,
-      }).toString(),
-      cache: "no-store",
+    return NextResponse.json({
+      success: true,
+      deleted: result === "ok",
+      result,
+    });
+  } catch (error) {
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
     }
-  );
 
-  const result = (await response.json().catch(() => null)) as
-    | { result?: string; error?: { message?: string } }
-    | null;
-
-  if (!response.ok) {
-    return NextResponse.json(
-      {
-        message: result?.error?.message ?? "Cloudinary image deletion failed.",
-      },
-      { status: response.status }
-    );
+    console.error("Image delete error:", error);
+    return NextResponse.json({ message: "Image deletion failed." }, { status: 500 });
   }
-
-  if (result?.result !== "ok" && result?.result !== "not found") {
-    return NextResponse.json(
-      { message: "Unexpected Cloudinary delete response." },
-      { status: 502 }
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    deleted: result.result === "ok",
-    result: result.result,
-  });
 }

@@ -32,7 +32,7 @@ export async function deleteManagedProductImages(image: ProductImageRef) {
   let notFoundCount = 0;
 
   for (const publicId of publicIds) {
-    const response = await fetch("/api/admin/cloudinary/delete", {
+    const response = await fetch("/api/admin/uploads/delete", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

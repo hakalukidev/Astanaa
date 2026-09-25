@@ -5,6 +5,8 @@ import type {
   Timestamp,
 } from "firebase/firestore";
 
+import { getLocalUploadThumbnailPath, isLocalUploadUrl } from "@/lib/local-upload-urls";
+
 export const LISTINGS_COLLECTION = "listings";
 
 /**
@@ -265,6 +267,9 @@ export function getPrimaryListingPhotoUrl(listing: Listing) {
 }
 
 /**
+ * Images stored on our own server get a pre-generated square thumbnail next
+ * to them at upload time (see lib/local-uploads.ts).
+ *
  * Cloudinary serves the exact upload resolution by default, which is
  * massive overkill for a small admin-list thumbnail (photos are often
  * multi-MB phone camera shots). Cloudinary supports resizing on the fly via
@@ -275,6 +280,10 @@ export function getPrimaryListingPhotoUrl(listing: Listing) {
 export function getListingThumbnailUrl(url: string, size = 100) {
   if (!url) {
     return url;
+  }
+
+  if (isLocalUploadUrl(url)) {
+    return getLocalUploadThumbnailPath(url);
   }
 
   const uploadMarker = "/upload/";

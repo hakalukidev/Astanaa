@@ -116,13 +116,13 @@ function getCleanupDescription(
 ) {
   if (cleanupStatus === "skipped") {
     return context === "deleted product"
-      ? "The product was deleted, but no Cloudinary public ID was available for the image cleanup."
-      : "The product was saved, but the previous image did not include a Cloudinary public ID for cleanup.";
+      ? "The product was deleted, but no image public ID was available for the image cleanup."
+      : "The product was saved, but the previous image did not include a image public ID for cleanup.";
   }
 
   return context === "deleted product"
-    ? "The product was deleted, but Cloudinary could not confirm the image removal. Check the stored photo URL/public ID."
-    : "The product was saved, but Cloudinary could not confirm the previous image removal. Check the stored photo URL/public ID.";
+    ? "The product was deleted, but the server could not confirm the image removal. Check the stored photo URL/public ID."
+    : "The product was saved, but the server could not confirm the previous image removal. Check the stored photo URL/public ID.";
 }
 
 type AdminProductsPageProps = {

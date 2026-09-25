@@ -63,3 +63,9 @@ package.json.backup
 
 # lockfile (large diffs on every dependency change; not tracked here)
 package-lock.json
+
+# cloudinary image backup (scripts/backup-cloudinary.mjs)
+/cloudinary-backup/
+
+# local image uploads in dev (production uses UPLOADS_DIR on the VPS)
+/public/uploads/

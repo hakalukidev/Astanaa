@@ -4,7 +4,8 @@ import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
-import CloudinaryUploadButton from "@/components/admin/CloudinaryUploadButton";
+import ImageUploadButton from "@/components/admin/ImageUploadButton";
+import { isLocalUploadUrl } from "@/lib/local-upload-urls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -288,6 +289,7 @@ export default function AdminSlidesPage() {
                         src={slide.image}
                         alt={slide.title}
                         fill
+                        unoptimized={isLocalUploadUrl(slide.image)}
                         className="object-cover"
                       />
                     </div>
@@ -367,7 +369,7 @@ export default function AdminSlidesPage() {
             <div className="space-y-2">
               <Label>Slide image</Label>
               <div className="flex flex-wrap items-center gap-3">
-                <CloudinaryUploadButton
+                <ImageUploadButton
                   label={formValues.image ? "Replace image" : "Upload image"}
                   disabled={isSavingSlide}
                   onUploaded={({ url, publicId }) =>
@@ -404,6 +406,7 @@ export default function AdminSlidesPage() {
                     src={formValues.image}
                     alt={formValues.title || "Slide preview"}
                     fill
+                    unoptimized={isLocalUploadUrl(formValues.image)}
                     className="object-cover"
                   />
                 </div>

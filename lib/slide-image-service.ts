@@ -19,7 +19,7 @@ export async function deleteManagedSlideImage(image: SlideImageRef) {
     return { status: "skipped" } satisfies ManagedSlideImageDeleteResult;
   }
 
-  const response = await fetch("/api/admin/cloudinary/delete", {
+  const response = await fetch("/api/admin/uploads/delete", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

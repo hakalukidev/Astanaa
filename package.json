@@ -16,7 +16,9 @@
     "migrate:settings": "node --env-file=.env --env-file=.env.local scripts/migrate-settings-to-postgres.mjs",
     "migrate:users": "node --env-file=.env --env-file=.env.local scripts/migrate-users-to-postgres.mjs",
     "migrate:passwords": "node --env-file=.env --env-file=.env.local scripts/migrate-passwords-to-postgres.mjs",
-    "migrate:slides": "node --env-file=.env --env-file=.env.local scripts/migrate-slides-to-postgres.mjs"
+    "migrate:slides": "node --env-file=.env --env-file=.env.local scripts/migrate-slides-to-postgres.mjs",
+    "migrate:images": "node --env-file=.env --env-file=.env.local scripts/migrate-images-to-local.mjs",
+    "backup:cloudinary": "node --env-file=.env --env-file=.env.local scripts/backup-cloudinary.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -39,6 +41,7 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.76.1",
     "react-icons": "^5.6.0",
+    "sharp": "^0.35.4",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.4.3"

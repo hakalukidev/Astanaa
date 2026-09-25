@@ -6,18 +6,16 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
-type CloudinaryUploadButtonProps = {
+type ImageUploadButtonProps = {
   disabled?: boolean;
   label?: string;
   onUploaded: (asset: { url: string; publicId: string }) => void;
 };
 
-type CloudinaryUploadResponse = {
-  public_id?: string;
-  secure_url?: string;
-  error?: {
-    message?: string;
-  };
+type ImageUploadResponse = {
+  url?: string;
+  publicId?: string;
+  message?: string;
 };
 
 const ACCEPTED_FILE_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -36,28 +34,15 @@ function isAcceptedImage(file: File) {
   return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
-export default function CloudinaryUploadButton({
+export default function ImageUploadButton({
   disabled,
   label = "Upload image",
   onUploaded,
-}: CloudinaryUploadButtonProps) {
+}: ImageUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim();
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET?.trim();
-  const folder = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER?.trim();
-
   async function uploadFile(file: File) {
-    if (!cloudName || !uploadPreset) {
-      toast({
-        title: "Upload not configured",
-        description: "Cloudinary upload settings are missing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!isAcceptedImage(file)) {
       toast({
         title: "Unsupported image",
@@ -72,31 +57,23 @@ export default function CloudinaryUploadButton({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
 
-      if (folder) {
-        formData.append("folder", folder);
-      }
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch("/api/admin/uploads", {
+        method: "POST",
+        body: formData,
+      });
 
       const payload = (await response.json().catch(() => null)) as
-        | CloudinaryUploadResponse
+        | ImageUploadResponse
         | null;
 
-      if (!response.ok || !payload?.secure_url || !payload.public_id) {
-        throw new Error(payload?.error?.message ?? "Cloudinary upload failed.");
+      if (!response.ok || !payload?.url || !payload.publicId) {
+        throw new Error(payload?.message ?? "Image upload failed.");
       }
 
       onUploaded({
-        url: payload.secure_url,
-        publicId: payload.public_id,
+        url: payload.url,
+        publicId: payload.publicId,
       });
     } catch (error) {
       toast({
@@ -139,7 +116,7 @@ export default function CloudinaryUploadButton({
         type="button"
         variant="outline"
         onClick={() => inputRef.current?.click()}
-        disabled={disabled || !cloudName || !uploadPreset || isUploading}
+        disabled={disabled || isUploading}
       >
         {isUploading ? (
           <Loader2 className="animate-spin" />

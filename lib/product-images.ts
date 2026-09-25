@@ -1,3 +1,5 @@
+import { extractLocalUploadPublicId } from "@/lib/local-upload-urls";
+
 type ProductImageRef = {
   photoUrl?: string | null;
   photoPublicId?: string | null;
@@ -55,6 +57,12 @@ function isLikelyTransformationSegment(segment: string) {
 }
 
 export function extractCloudinaryPublicId(photoUrl: string) {
+  const localPublicId = extractLocalUploadPublicId(photoUrl);
+
+  if (localPublicId) {
+    return localPublicId;
+  }
+
   try {
     const parsedUrl = new URL(photoUrl);
 
