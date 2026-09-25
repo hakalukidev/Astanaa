@@ -169,6 +169,11 @@ export default function MyListingsPage() {
                     {formatListingPrice(listing.price)}
                   </p>
                 </Link>
+                {listing.status === "pending" ? (
+                  <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold uppercase text-red-700">
+                    {t.pending}
+                  </span>
+                ) : null}
                 {listing.boost.status === "active" ? (
                   <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold uppercase text-white">
                     <Zap size={10} /> {t.boosted}

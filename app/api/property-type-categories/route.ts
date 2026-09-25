@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentAdmin, isStaffAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
+import { isPropertyTypeIconColor } from "@/lib/property-type-icons";
 
 function mapCategory(row: {
   id: string;
@@ -9,6 +10,7 @@ function mapCategory(row: {
   en: string;
   bn: string;
   icon: string;
+  iconColor: string;
   order: number;
   createdAt: Date;
 }) {
@@ -18,6 +20,7 @@ function mapCategory(row: {
     en: row.en,
     bn: row.bn,
     icon: row.icon,
+    iconColor: row.iconColor,
     order: row.order,
     createdAtMs: row.createdAt.getTime(),
   };
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   const input = (await request.json().catch(() => null)) as
-    | { purpose?: string; en?: string; bn?: string; icon?: string }
+    | { purpose?: string; en?: string; bn?: string; icon?: string; iconColor?: string }
     | null;
 
   if (!input?.purpose || !input?.en || !input?.bn) {
@@ -58,6 +61,7 @@ export async function POST(request: NextRequest) {
       en: input.en,
       bn: input.bn,
       icon: input.icon || "Building2",
+      iconColor: isPropertyTypeIconColor(input.iconColor) ? input.iconColor : "",
       order: (maxOrder._max.order ?? -1) + 1,
     },
   });

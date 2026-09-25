@@ -13,6 +13,7 @@ export type PropertyTypeCategory = {
   en: string;
   bn: string;
   icon: string;
+  iconColor: string;
   order: number;
   createdAtMs: number | null;
 };
@@ -22,6 +23,7 @@ export type PropertyTypeCategoryInput = {
   en: string;
   bn: string;
   icon?: string;
+  iconColor?: string;
 };
 
 /**
@@ -56,6 +58,7 @@ const FALLBACK_CATEGORIES: PropertyTypeCategory[] = DEFAULT_PROPERTY_TYPE_CATEGO
     createdAtMs: null,
     ...entry,
     icon: entry.icon ?? "Building2",
+    iconColor: entry.iconColor ?? "",
   })
 );
 

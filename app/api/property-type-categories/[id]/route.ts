@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentAdmin, isStaffAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
+import { isPropertyTypeIconColor } from "@/lib/property-type-icons";
 
 type RouteContext = { params: { id: string } };
 
@@ -16,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   }
 
   const input = (await request.json().catch(() => null)) as
-    | { purpose?: string; en?: string; bn?: string; icon?: string }
+    | { purpose?: string; en?: string; bn?: string; icon?: string; iconColor?: string }
     | null;
 
   if (!input?.purpose || !input?.en || !input?.bn) {
@@ -32,7 +33,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
   await db.$transaction(async (tx) => {
     await tx.propertyTypeCategory.update({
       where: { id: params.id },
-      data: { purpose: input.purpose, en: input.en, bn: input.bn, icon: input.icon || "Building2" },
+      data: {
+        purpose: input.purpose,
+        en: input.en,
+        bn: input.bn,
+        icon: input.icon || "Building2",
+        iconColor: isPropertyTypeIconColor(input.iconColor) ? input.iconColor : "",
+      },
     });
 
     if (existing.en !== input.en) {

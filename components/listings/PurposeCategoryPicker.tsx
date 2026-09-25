@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, LayoutGrid } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { ListingPurposeRecord } from "@/lib/listing-purposes";
-import { getPropertyTypeIcon } from "@/lib/property-type-icons";
+import { getPropertyTypeIcon, getPropertyTypeIconColorClass } from "@/lib/property-type-icons";
 import type { PropertyTypeCategory } from "@/lib/property-type-categories";
 
 /**
@@ -153,7 +153,7 @@ export default function PurposeCategoryPicker({
                               isSelected ? "bg-brand-mint/20 font-medium text-brand-navy" : "text-gray-600"
                             }`}
                           >
-                            <TypeIcon size={14} className="shrink-0" />
+                            <TypeIcon size={14} className={`shrink-0 ${getPropertyTypeIconColorClass(category.iconColor)}`} />
                             {language === "bn" ? category.bn : category.en}
                           </button>
                         </li>

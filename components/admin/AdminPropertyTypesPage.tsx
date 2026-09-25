@@ -26,6 +26,8 @@ import {
 import {
   DEFAULT_PROPERTY_TYPE_ICON,
   getPropertyTypeIcon,
+  getPropertyTypeIconColorClass,
+  PROPERTY_TYPE_ICON_COLOR_OPTIONS,
   PROPERTY_TYPE_ICON_OPTIONS,
 } from "@/lib/property-type-icons";
 
@@ -62,6 +64,7 @@ export default function AdminPropertyTypesPage() {
   const [en, setEn] = useState("");
   const [bn, setBn] = useState("");
   const [icon, setIcon] = useState(DEFAULT_PROPERTY_TYPE_ICON);
+  const [iconColor, setIconColor] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -115,6 +118,7 @@ export default function AdminPropertyTypesPage() {
     setEn("");
     setBn("");
     setIcon(DEFAULT_PROPERTY_TYPE_ICON);
+    setIconColor("");
     if (visiblePurposes.length > 0) {
       setPurpose(visiblePurposes[0].key);
     }
@@ -126,6 +130,7 @@ export default function AdminPropertyTypesPage() {
     setEn(category.en);
     setBn(category.bn);
     setIcon(category.icon);
+    setIconColor(category.iconColor ?? "");
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -137,10 +142,10 @@ export default function AdminPropertyTypesPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await updatePropertyTypeCategory(editingId, { purpose, en: en.trim(), bn: bn.trim(), icon });
+        await updatePropertyTypeCategory(editingId, { purpose, en: en.trim(), bn: bn.trim(), icon, iconColor });
         toast({ title: "Category updated" });
       } else {
-        await addPropertyTypeCategory({ purpose, en: en.trim(), bn: bn.trim(), icon });
+        await addPropertyTypeCategory({ purpose, en: en.trim(), bn: bn.trim(), icon, iconColor });
         toast({ title: "Category added" });
       }
       resetForm();
@@ -232,7 +237,31 @@ export default function AdminPropertyTypesPage() {
                         : "border-input text-slate-500 hover:border-blue-300 hover:text-blue-600"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className={`h-4 w-4 ${getPropertyTypeIconColorClass(iconColor)}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+              <Label>Icon color</Label>
+              <div className="flex flex-wrap gap-2">
+                {PROPERTY_TYPE_ICON_COLOR_OPTIONS.map(({ key, label, swatchClassName }) => (
+                  <button
+                    key={key || "default"}
+                    type="button"
+                    onClick={() => setIconColor(key)}
+                    aria-label={label}
+                    aria-pressed={iconColor === key}
+                    title={label}
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition ${
+                      iconColor === key
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-input text-slate-600 hover:border-blue-300"
+                    }`}
+                  >
+                    <span className={`h-4 w-4 rounded-full border ${swatchClassName}`} />
+                    {label}
                   </button>
                 ))}
               </div>
@@ -318,7 +347,7 @@ function CategoryListCard({
               <li key={category.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-600">
-                    <CategoryIcon className="h-4 w-4" />
+                    <CategoryIcon className={`h-4 w-4 ${getPropertyTypeIconColorClass(category.iconColor)}`} />
                   </span>
                   <div className="min-w-0">
                     <p className="truncate font-medium text-blue-950">{category.en}</p>

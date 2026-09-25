@@ -296,6 +296,7 @@ model PropertyTypeCategory {
   en        String
   bn        String
   icon      String
+  iconColor String   @default("") @map("icon_color")
   order     Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
 

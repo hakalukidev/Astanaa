@@ -38,7 +38,7 @@ import {
   groupCategoriesByPurpose,
   type PropertyTypeCategory,
 } from '@/lib/property-type-categories';
-import { getPropertyTypeIcon } from '@/lib/property-type-icons';
+import { getPropertyTypeIcon, getPropertyTypeIconColorClass } from '@/lib/property-type-icons';
 import { translations } from '@/lib/site-translations';
 
 const LANGUAGE_SHORT_LABEL: Record<'bn' | 'en', string> = {
@@ -170,7 +170,7 @@ function PropertyTypeGroup({
                       : 'py-1.5 text-white/75 hover:text-brand-mint'
                   }`}
                 >
-                  <TypeIcon size={14} className="shrink-0" />
+                  <TypeIcon size={14} className={`shrink-0 ${getPropertyTypeIconColorClass(category.iconColor)}`} />
                   <span className="flex-1 truncate">{language === 'bn' ? category.bn : category.en}</span>
                   {counts[category.en] !== undefined && (
                     <span className={`shrink-0 text-xs ${light ? 'text-gray-400' : 'text-white/50'}`}>
