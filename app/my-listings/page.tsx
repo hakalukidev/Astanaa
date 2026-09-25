@@ -10,7 +10,12 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeToSellerBuyRequests, type BuyRequest } from "@/lib/buy-requests";
 import { deleteListing, getListingsBySeller } from "@/lib/listing-service";
-import { formatListingPrice, getPrimaryListingPhotoUrl, type Listing } from "@/lib/listings";
+import {
+  formatListingPrice,
+  getPrimaryListingPhotoUrl,
+  isListingLockedForOwner,
+  type Listing,
+} from "@/lib/listings";
 import { translations } from "@/lib/site-translations";
 
 export default function MyListingsPage() {
@@ -173,13 +178,15 @@ export default function MyListingsPage() {
                     {t.boostPending}
                   </span>
                 ) : null}
-                <Link
-                  href={`/post-ad/${listing.id}`}
-                  aria-label={t.edit}
-                  className="flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Link>
+                {isListingLockedForOwner(listing) ? null : (
+                  <Link
+                    href={`/post-ad/${listing.id}`}
+                    aria-label={t.edit}
+                    className="flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => handleDelete(listing)}

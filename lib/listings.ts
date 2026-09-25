@@ -264,6 +264,15 @@ export function formatListingLocation(parts: {
     .join(", ");
 }
 
+/**
+ * Once a post is approved (live) or sold, its owner can no longer edit it —
+ * only staff can. Pending and rejected posts stay editable so owners can fix
+ * and resubmit them.
+ */
+export function isListingLockedForOwner(listing: Pick<Listing, "status">) {
+  return listing.status === "active" || listing.status === "sold";
+}
+
 export function getPrimaryListingPhotoUrl(listing: Listing) {
   return listing.photoUrls[0] ?? "";
 }

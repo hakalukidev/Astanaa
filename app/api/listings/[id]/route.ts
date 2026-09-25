@@ -4,7 +4,7 @@ import { canModerateListings, getCurrentAdmin, isStaffAdmin, type AdminRole } fr
 import { getSessionUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { mapListingRow } from "@/lib/listing-mappers";
-import type { ListingInput, ListingStatus } from "@/lib/listings";
+import { isListingLockedForOwner, type ListingInput, type ListingStatus } from "@/lib/listings";
 
 type RouteContext = { params: { id: string } };
 
@@ -71,6 +71,13 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   if (!body) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  if (!isModerator && isListingLockedForOwner(mapListingRow(existing))) {
+    return NextResponse.json(
+      { error: "Approved posts can't be edited." },
+      { status: 403 }
+    );
   }
 
   if (!isModerator) {

@@ -170,7 +170,7 @@ function LocationItemRow({
         isSelected ? "bg-green-600 text-white" : "text-gray-700 hover:bg-green-50"
       }`}
     >
-      <button type="button" onClick={onSelect} className="min-w-0 flex-1 truncate text-left">
+      <button type="button" onClick={onSelect} className="min-w-0 flex-1 break-words text-left">
         <span className={`mr-1 tabular-nums ${isSelected ? "text-white/70" : "text-gray-400"}`}>{serial}.</span>
         {node.en} <span className={isSelected ? "text-white/80" : "text-gray-400"}>({node.bn})</span>
       </button>
@@ -239,7 +239,7 @@ function LocationColumn({
   onAdd: (en: string, bn: string) => Promise<void>;
 }) {
   return (
-    <div className="flex w-60 shrink-0 flex-col border border-gray-200">
+    <div className="flex w-72 shrink-0 flex-col border border-gray-200">
       <div className="border-b border-gray-200 bg-green-50 px-3 py-2 text-sm font-semibold text-gray-800">
         {columnTitle(depth)}
       </div>
