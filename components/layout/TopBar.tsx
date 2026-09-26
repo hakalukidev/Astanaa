@@ -460,6 +460,8 @@ export default function TopBar() {
   // one being clicked should count as "inside" and not close the panel.
   const mobileSearchButtonRef = useRef<HTMLButtonElement>(null);
   const mobileSearchPanelRef = useRef<HTMLDivElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -531,6 +533,11 @@ export default function TopBar() {
         mobileSearchButtonRef.current?.contains(target) || mobileSearchPanelRef.current?.contains(target);
       if (!isInsideMobileSearch) {
         setIsSearchOpen(false);
+      }
+      const isInsideMobileMenu =
+        mobileMenuButtonRef.current?.contains(target) || mobileMenuPanelRef.current?.contains(target);
+      if (!isInsideMobileMenu) {
+        setIsMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -830,7 +837,11 @@ export default function TopBar() {
               <BilingualLabel en={translations.en.topbar.postAdShort} bn={translations.bn.topbar.postAdShort} />
             </Link>
             <LanguageToggle compact />
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1.5 hover:bg-white/10 rounded-full text-white">
+            <button
+              ref={mobileMenuButtonRef}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1.5 hover:bg-white/10 rounded-full text-white"
+            >
               {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
@@ -871,7 +882,7 @@ export default function TopBar() {
         )}
 
         {isMenuOpen && (
-          <div className="lg:hidden mt-3 space-y-2">
+          <div ref={mobileMenuPanelRef} className="lg:hidden mt-3 space-y-2">
             <div ref={mobileBrowseDropdownRef}>
               <button
                 onClick={() => setIsBrowseOpen(!isBrowseOpen)}
