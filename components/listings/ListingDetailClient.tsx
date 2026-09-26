@@ -320,13 +320,13 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
               </div>
             </div>
 
-            {listing.tenantTypes.length > 0 ? (
+            {(listing.tenantTypes ?? []).length > 0 ? (
               <div className="mt-4 border-t border-gray-100 pt-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
                   {t.suitableFor}
                 </h2>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {listing.tenantTypes.map((type) => (
+                  {(listing.tenantTypes ?? []).map((type) => (
                     <span
                       key={type}
                       className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1 pr-3 text-sm font-medium text-gray-700"

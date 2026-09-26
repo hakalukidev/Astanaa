@@ -1,9 +1,10 @@
 "use client";
 
-import { BedDouble, Handshake, MapPin, Ruler, Zap } from "lucide-react";
+import { BedDouble, MapPin, Ruler, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import TenantAvatar from "@/components/listings/TenantAvatar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   formatListingPostedAt,
@@ -12,10 +13,12 @@ import {
   type Listing,
 } from "@/lib/listings";
 import {
+  DEFAULT_PROPERTY_TYPE_CATEGORIES,
   getPropertyTypeCategoriesCached,
   getPropertyTypeLabel,
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
+import { getPropertyTypeIcon, getPropertyTypeIconColorClass } from "@/lib/property-type-icons";
 import { translations } from "@/lib/site-translations";
 
 type ListingCardProps = {
@@ -25,6 +28,7 @@ type ListingCardProps = {
 export default function ListingCard({ listing }: ListingCardProps) {
   const { language } = useLanguage();
   const t = translations[language].listings;
+  const tDetail = translations[language].listingDetail;
   const photoUrl = getPrimaryListingPhotoUrl(listing);
   const isBoosted = listing.boost.status === "active";
   const [propertyTypeCategories, setPropertyTypeCategories] = useState<PropertyTypeCategory[]>([]);
@@ -42,6 +46,13 @@ export default function ListingCard({ listing }: ListingCardProps) {
   }, []);
 
   const propertyTypeLabel = getPropertyTypeLabel(propertyTypeCategories, listing.propertyType, language);
+  const category =
+    propertyTypeCategories.find((item) => item.en === listing.propertyType) ??
+    DEFAULT_PROPERTY_TYPE_CATEGORIES.find((item) => item.en === listing.propertyType);
+  const CategoryIcon = getPropertyTypeIcon(category?.icon);
+  const tenantLabels = { male: tDetail.tenantMale, female: tDetail.tenantFemale, family: tDetail.tenantFamily };
+  // Listings cached before tenantTypes existed (unstable_cache) come without it.
+  const tenantTypes = listing.tenantTypes ?? [];
 
   return (
     <Link
@@ -83,9 +94,22 @@ export default function ListingCard({ listing }: ListingCardProps) {
               <span className="text-xs font-medium text-slate-500"> {t.perMonth}</span>
             ) : null}
           </span>
-          {listing.negotiable ? (
-            <Handshake size={16} className="shrink-0 text-amber-600" aria-label={t.negotiable} />
-          ) : null}
+          {/* Who the place suits if the seller said so, else the category's icon. */}
+          {tenantTypes.length > 0 ? (
+            <span className="flex shrink-0 -space-x-1.5">
+              {tenantTypes.map((type) => (
+                <span key={type} title={tenantLabels[type]} className="rounded-full ring-2 ring-white">
+                  <TenantAvatar type={type} className="h-6 w-6" />
+                </span>
+              ))}
+            </span>
+          ) : (
+            <CategoryIcon
+              size={18}
+              className={`shrink-0 ${getPropertyTypeIconColorClass(category?.iconColor) || "text-slate-500"}`}
+              aria-label={propertyTypeLabel}
+            />
+          )}
         </p>
 
         <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">
