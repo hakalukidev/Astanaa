@@ -505,16 +505,14 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
                 {t.termsAgreement}
               </label>
 
-              {hasAcceptedTerms ? (
-                <Button
-                  type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={isSubmitting || isUploadingPhoto}
-                >
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {isEditing ? t.saveChanges : t.submit}
-                </Button>
-              ) : null}
+              <Button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={!hasAcceptedTerms || isSubmitting || isUploadingPhoto}
+              >
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isEditing ? t.saveChanges : t.submit}
+              </Button>
             </form>
           </CardContent>
         </Card>
