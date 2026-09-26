@@ -1,10 +1,13 @@
 "use client";
 
-import { getOrFetch } from "@/lib/browser-cache";
+import { clearCache, getOrFetch } from "@/lib/browser-cache";
 import type { ListingPurpose } from "@/lib/listings";
 
-const CATEGORIES_CACHE_KEY = "astanaa-property-type-categories-cache";
-const CATEGORIES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+// Bump the version suffix whenever the cached shape changes (v2 added
+// iconColor) so browsers drop entries saved by older code right away.
+const CATEGORIES_CACHE_KEY = "astanaa-property-type-categories-cache-v2";
+// Short so admin edits (names, icons, colors) reach visitors quickly.
+const CATEGORIES_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 const POLL_INTERVAL_MS = 5000;
 
 export type PropertyTypeCategory = {
@@ -145,6 +148,7 @@ export async function addPropertyTypeCategory(input: PropertyTypeCategoryInput) 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+  clearCache(CATEGORIES_CACHE_KEY);
 }
 
 /** Staff-admin only. Renaming `en` cascades to every listing that already
@@ -155,11 +159,13 @@ export async function updatePropertyTypeCategory(id: string, input: PropertyType
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+  clearCache(CATEGORIES_CACHE_KEY);
 }
 
 /** Staff-admin only. */
 export async function deletePropertyTypeCategory(id: string) {
   await fetch(`/api/property-type-categories/${id}`, { method: "DELETE" });
+  clearCache(CATEGORIES_CACHE_KEY);
 }
 
 /**

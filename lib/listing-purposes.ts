@@ -1,9 +1,12 @@
 "use client";
 
-import { getOrFetch } from "@/lib/browser-cache";
+import { clearCache, getOrFetch } from "@/lib/browser-cache";
 
-const PURPOSES_CACHE_KEY = "astanaa-listing-purposes-cache";
-const PURPOSES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+// Bump the version suffix whenever the cached shape changes (v2 added
+// iconColor) so browsers drop entries saved by older code right away.
+const PURPOSES_CACHE_KEY = "astanaa-listing-purposes-cache-v2";
+// Short so admin edits (names, icons, colors) reach visitors quickly.
+const PURPOSES_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 const POLL_INTERVAL_MS = 5000;
 
 /**
@@ -114,6 +117,7 @@ export async function addListingPurpose(input: ListingPurposeInput) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+  clearCache(PURPOSES_CACHE_KEY);
 }
 
 /** Staff-admin only. Only the display bits (en/bn/icon) are editable —
@@ -124,11 +128,13 @@ export async function updateListingPurpose(id: string, input: ListingPurposeInpu
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
+  clearCache(PURPOSES_CACHE_KEY);
 }
 
 /** Staff-admin only. */
 export async function deleteListingPurpose(id: string) {
   await fetch(`/api/listing-purposes/${id}`, { method: "DELETE" });
+  clearCache(PURPOSES_CACHE_KEY);
 }
 
 /** Kept for interface compatibility — a no-op now that Postgres is

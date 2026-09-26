@@ -41,6 +41,18 @@ function writeCache<T>(key: string, data: T): void {
   }
 }
 
+/** Drops a cached value so the next `getOrFetch` for `key` hits the network. */
+export function clearCache(key: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable — nothing cached to clear.
+  }
+}
+
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
 /**
