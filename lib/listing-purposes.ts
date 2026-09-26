@@ -19,6 +19,7 @@ export type ListingPurposeRecord = {
   en: string;
   bn: string;
   icon: string;
+  iconColor: string;
   order: number;
   createdAtMs: number | null;
 };
@@ -27,6 +28,7 @@ export type ListingPurposeInput = {
   en: string;
   bn: string;
   icon?: string;
+  iconColor?: string;
 };
 
 /** The site's original two purposes — used as a fallback if the API read
@@ -42,6 +44,7 @@ const FALLBACK_PURPOSES: ListingPurposeRecord[] = DEFAULT_LISTING_PURPOSES.map((
   createdAtMs: null,
   ...entry,
   icon: entry.icon ?? "Tag",
+  iconColor: entry.iconColor ?? "",
 }));
 
 export function isFallbackPurpose(purpose: ListingPurposeRecord) {

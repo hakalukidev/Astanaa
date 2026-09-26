@@ -24,6 +24,8 @@ import {
 import {
   DEFAULT_PROPERTY_TYPE_ICON,
   getPropertyTypeIcon,
+  getPropertyTypeIconColorClass,
+  PROPERTY_TYPE_ICON_COLOR_OPTIONS,
   PROPERTY_TYPE_ICON_OPTIONS,
 } from "@/lib/property-type-icons";
 
@@ -52,6 +54,7 @@ export default function AdminListingPurposesPage() {
   const [en, setEn] = useState("");
   const [bn, setBn] = useState("");
   const [icon, setIcon] = useState(DEFAULT_PROPERTY_TYPE_ICON);
+  const [iconColor, setIconColor] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -91,6 +94,7 @@ export default function AdminListingPurposesPage() {
     setEn("");
     setBn("");
     setIcon(DEFAULT_PROPERTY_TYPE_ICON);
+    setIconColor("");
   }
 
   function startEdit(purpose: ListingPurposeRecord) {
@@ -98,6 +102,7 @@ export default function AdminListingPurposesPage() {
     setEn(purpose.en);
     setBn(purpose.bn);
     setIcon(purpose.icon);
+    setIconColor(purpose.iconColor ?? "");
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -109,10 +114,10 @@ export default function AdminListingPurposesPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        await updateListingPurpose(editingId, { en: en.trim(), bn: bn.trim(), icon });
+        await updateListingPurpose(editingId, { en: en.trim(), bn: bn.trim(), icon, iconColor });
         toast({ title: "Purpose updated" });
       } else {
-        await addListingPurpose({ en: en.trim(), bn: bn.trim(), icon });
+        await addListingPurpose({ en: en.trim(), bn: bn.trim(), icon, iconColor });
         toast({ title: "Purpose added" });
       }
       resetForm();
@@ -221,7 +226,31 @@ export default function AdminListingPurposesPage() {
                         : "border-input text-slate-500 hover:border-blue-300 hover:text-blue-600"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className={`h-4 w-4 ${getPropertyTypeIconColorClass(iconColor)}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+              <Label>Icon color</Label>
+              <div className="flex flex-wrap gap-2">
+                {PROPERTY_TYPE_ICON_COLOR_OPTIONS.map(({ key, label, swatchClassName }) => (
+                  <button
+                    key={key || "default"}
+                    type="button"
+                    onClick={() => setIconColor(key)}
+                    aria-label={label}
+                    aria-pressed={iconColor === key}
+                    title={label}
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition ${
+                      iconColor === key
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-input text-slate-600 hover:border-blue-300"
+                    }`}
+                  >
+                    <span className={`h-4 w-4 rounded-full border ${swatchClassName}`} />
+                    {label}
                   </button>
                 ))}
               </div>
@@ -255,7 +284,7 @@ export default function AdminListingPurposesPage() {
                   <li key={purpose.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-600">
-                        <PurposeIcon className="h-4 w-4" />
+                        <PurposeIcon className={`h-4 w-4 ${getPropertyTypeIconColorClass(purpose.iconColor)}`} />
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-medium text-blue-950">{purpose.en}</p>

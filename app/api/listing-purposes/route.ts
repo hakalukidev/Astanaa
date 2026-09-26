@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentAdmin, isStaffAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
+import { isPropertyTypeIconColor } from "@/lib/property-type-icons";
 
 function mapPurpose(row: {
   id: string;
@@ -9,6 +10,7 @@ function mapPurpose(row: {
   en: string;
   bn: string;
   icon: string;
+  iconColor: string;
   order: number;
   createdAt: Date;
 }) {
@@ -18,6 +20,7 @@ function mapPurpose(row: {
     en: row.en,
     bn: row.bn,
     icon: row.icon,
+    iconColor: row.iconColor,
     order: row.order,
     createdAtMs: row.createdAt.getTime(),
   };
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   const input = (await request.json().catch(() => null)) as
-    | { en?: string; bn?: string; icon?: string }
+    | { en?: string; bn?: string; icon?: string; iconColor?: string }
     | null;
 
   if (!input?.en || !input?.bn) {
@@ -67,7 +70,14 @@ export async function POST(request: NextRequest) {
   }
 
   const row = await db.listingPurpose.create({
-    data: { key, en: input.en, bn: input.bn, icon: input.icon || "Tag", order: maxOrder + 1 },
+    data: {
+      key,
+      en: input.en,
+      bn: input.bn,
+      icon: input.icon || "Tag",
+      iconColor: isPropertyTypeIconColor(input.iconColor) ? input.iconColor : "",
+      order: maxOrder + 1,
+    },
   });
 
   return NextResponse.json({ purpose: mapPurpose(row) }, { status: 201 });

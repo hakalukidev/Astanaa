@@ -129,7 +129,10 @@ export default function PurposeCategoryPicker({
                   className="flex w-full items-center justify-between gap-2 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-brand-mint/15"
                 >
                   <span className="flex items-center gap-2">
-                    <GroupIcon size={15} className="shrink-0" />
+                    <GroupIcon
+                      size={15}
+                      className={`shrink-0 ${getPropertyTypeIconColorClass(purposeRecord.iconColor)}`}
+                    />
                     {language === "bn" ? purposeRecord.bn : purposeRecord.en}
                   </span>
                   <ChevronRight

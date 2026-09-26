@@ -118,6 +118,7 @@ function PropertyTypeGroup({
   purpose,
   label,
   groupIcon: GroupIcon,
+  groupIconColor,
   categories,
   counts,
   language,
@@ -129,6 +130,7 @@ function PropertyTypeGroup({
   purpose: ListingPurpose;
   label: string;
   groupIcon: LucideIcon;
+  groupIconColor: string;
   categories: PropertyTypeCategory[];
   counts: Record<string, number>;
   language: 'en' | 'bn';
@@ -149,7 +151,7 @@ function PropertyTypeGroup({
         }`}
       >
         <span className="flex items-center gap-2">
-          <GroupIcon size={15} className="shrink-0" />
+          <GroupIcon size={15} className={`shrink-0 ${getPropertyTypeIconColorClass(groupIconColor)}`} />
           {label}
         </span>
         <ChevronRight size={14} className={`shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -670,6 +672,7 @@ export default function TopBar() {
                     purpose={purposeRecord.key}
                     label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
                     groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
+                    groupIconColor={purposeRecord.iconColor}
                     categories={categoriesByPurpose[purposeRecord.key] ?? []}
                     counts={propertyTypeCounts}
                     language={language}
@@ -896,6 +899,7 @@ export default function TopBar() {
                       purpose={purposeRecord.key}
                       label={language === 'bn' ? purposeRecord.bn : purposeRecord.en}
                       groupIcon={getPropertyTypeIcon(purposeRecord.icon)}
+                      groupIconColor={purposeRecord.iconColor}
                       categories={categoriesByPurpose[purposeRecord.key] ?? []}
                       counts={propertyTypeCounts}
                       language={language}
