@@ -6,6 +6,7 @@ import type {
 } from "firebase/firestore";
 
 import { getLocalUploadThumbnailPath, isLocalUploadUrl } from "@/lib/local-upload-urls";
+import { normalizeTenantTypes, type TenantType } from "@/lib/tenant-types";
 
 export const LISTINGS_COLLECTION = "listings";
 
@@ -75,6 +76,8 @@ export type Listing = {
   bedrooms: number | null;
   bathrooms: number | null;
   areaSqft: number | null;
+  /** Who the place suits — up to 2 of male/female/family. */
+  tenantTypes: TenantType[];
   photoUrls: string[];
   photoPublicIds: string[];
   status: ListingStatus;
@@ -172,6 +175,7 @@ export function mapListingSnapshot(snapshot: ListingSnapshot): Listing | null {
     bedrooms: toNullableNumber(data.bedrooms),
     bathrooms: toNullableNumber(data.bathrooms),
     areaSqft: toNullableNumber(data.areaSqft),
+    tenantTypes: normalizeTenantTypes(data.tenantTypes),
     photoUrls: toStringArray(data.photoUrls),
     photoPublicIds: toStringArray(data.photoPublicIds),
     status:

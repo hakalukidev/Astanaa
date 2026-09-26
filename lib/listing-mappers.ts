@@ -1,6 +1,7 @@
 import type { Listing as PrismaListing } from "@prisma/client";
 
 import type { Listing, ListingStatus } from "@/lib/listings";
+import { normalizeTenantTypes } from "@/lib/tenant-types";
 
 const STATUS_TO_APP: Record<PrismaListing["status"], ListingStatus> = {
   PENDING: "pending",
@@ -53,6 +54,7 @@ export function mapListingRow(row: PrismaListing): Listing {
     bedrooms: row.bedrooms,
     bathrooms: row.bathrooms,
     areaSqft: row.areaSqft,
+    tenantTypes: normalizeTenantTypes(row.tenantTypes),
     photoUrls: row.photoUrls,
     photoPublicIds: row.photoPublicIds,
     status: STATUS_TO_APP[row.status],

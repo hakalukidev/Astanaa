@@ -148,6 +148,9 @@ model Listing {
   bathrooms Int?
   areaSqft  Int?  @map("area_sqft")
 
+  /// Who the place suits: up to 2 of "male" | "female" | "family" (lib/tenant-types.ts).
+  tenantTypes String[] @default([]) @map("tenant_types")
+
   photoUrls      String[] @map("photo_urls")
   photoPublicIds String[] @map("photo_public_ids")
 

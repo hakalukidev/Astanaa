@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { mapListingRow } from "@/lib/listing-mappers";
 import { isListingLockedForOwner, type ListingInput, type ListingStatus } from "@/lib/listings";
+import { normalizeTenantTypes } from "@/lib/tenant-types";
 
 type RouteContext = { params: { id: string } };
 
@@ -27,6 +28,7 @@ const EDITABLE_FIELDS = [
   "bedrooms",
   "bathrooms",
   "areaSqft",
+  "tenantTypes",
   "photoUrls",
   "photoPublicIds",
 ] as const satisfies readonly (keyof ListingInput)[];
@@ -95,6 +97,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (field in body) {
       data[field] = (body as Record<string, unknown>)[field];
     }
+  }
+  if ("tenantTypes" in data) {
+    data.tenantTypes = normalizeTenantTypes(data.tenantTypes);
   }
   if (body.status) {
     data.status = body.status.toUpperCase();

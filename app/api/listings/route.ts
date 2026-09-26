@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { mapListingRow } from "@/lib/listing-mappers";
 import type { ListingInput } from "@/lib/listings";
+import { normalizeTenantTypes } from "@/lib/tenant-types";
 
 // GET - public active-listings feed (parity with the old subscribeToActiveListings).
 export async function GET() {
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
       bedrooms: input.bedrooms ?? null,
       bathrooms: input.bathrooms ?? null,
       areaSqft: input.areaSqft ?? null,
+      tenantTypes: normalizeTenantTypes(input.tenantTypes),
       photoUrls: input.photoUrls ?? [],
       photoPublicIds: input.photoPublicIds ?? [],
       status: "PENDING",

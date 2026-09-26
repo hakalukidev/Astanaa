@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import BoostListingDialog from "@/components/listings/BoostListingDialog";
 import ListingCard from "@/components/listings/ListingCard";
+import TenantAvatar from "@/components/listings/TenantAvatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -318,6 +319,25 @@ export default function ListingDetailClient({ listing, otherListings = [] }: Lis
                 {listing.areaSqft ?? "-"} {tListings.sqft}
               </div>
             </div>
+
+            {listing.tenantTypes.length > 0 ? (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                  {t.suitableFor}
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {listing.tenantTypes.map((type) => (
+                    <span
+                      key={type}
+                      className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1 pr-3 text-sm font-medium text-gray-700"
+                    >
+                      <TenantAvatar type={type} className="h-7 w-7" />
+                      {type === "male" ? t.tenantMale : type === "female" ? t.tenantFemale : t.tenantFamily}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* Seller */}
             <div className="mt-4 border-t border-gray-100 pt-4">

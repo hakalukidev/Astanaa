@@ -8,6 +8,7 @@ import LocationCascadeSelect, {
   type LocationCascadeValue,
 } from "@/components/listings/LocationCascadeSelect";
 import PurposeCategoryPicker from "@/components/listings/PurposeCategoryPicker";
+import TenantTypeSelect from "@/components/listings/TenantTypeSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   type PropertyTypeCategory,
 } from "@/lib/property-type-categories";
 import { translations } from "@/lib/site-translations";
+import type { TenantType } from "@/lib/tenant-types";
 import { uploadListingImage } from "@/lib/upload-listing-image";
 
 const MAX_PHOTOS = 6;
@@ -66,6 +68,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
   const [mapLink, setMapLink] = useState(listing?.locationMapUrl ?? "");
   const [sellerPhone, setSellerPhone] = useState(listing?.sellerPhone ?? "");
   const [sellerWhatsapp, setSellerWhatsapp] = useState(listing?.sellerWhatsapp ?? "");
+  const [tenantTypes, setTenantTypes] = useState<TenantType[]>(listing?.tenantTypes ?? []);
 
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>(
     () =>
@@ -223,6 +226,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
       bedrooms: bedrooms ? Number(bedrooms) : null,
       bathrooms: bathrooms ? Number(bathrooms) : null,
       areaSqft: areaSqft ? Number(areaSqft) : null,
+      tenantTypes,
       photoUrls: photos.map((photo) => photo.url),
       photoPublicIds: photos.map((photo) => photo.publicId),
     };
@@ -413,6 +417,18 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
                     min={0}
                     value={areaSqft}
                     onChange={(event) => setAreaSqft(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tenantTypes">{t.tenantTypes}</Label>
+                  <TenantTypeSelect
+                    id="tenantTypes"
+                    value={tenantTypes}
+                    onChange={setTenantTypes}
+                    labels={{ male: t.tenantMale, female: t.tenantFemale, family: t.tenantFamily }}
+                    placeholder={t.tenantTypesPlaceholder}
+                    limitHint={t.tenantTypesLimit}
                   />
                 </div>
 
