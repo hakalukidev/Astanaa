@@ -232,6 +232,7 @@ export const translations = {
       mapLinkHelp:
         "Open Google Maps, pin your exact building, tap Share, and paste the link here — buyers will see it on your ad.",
       reviewNote: "Your ad will be reviewed by our team and go live once approved.",
+      termsAgreement: "I follow all the terms and conditions of this website, and all my information is true.",
       submit: "Submit for approval",
       saveChanges: "Save changes",
     },
@@ -618,6 +619,7 @@ export const translations = {
       mapLinkHelp:
         "গুগল ম্যাপ খুলে আপনার সঠিক বাড়িটি পিন করুন, Share চাপুন, এবং লিংকটি এখানে পেস্ট করুন — ক্রেতারা আপনার বিজ্ঞাপনে এটি দেখতে পাবে।",
       reviewNote: "আমাদের টিম আপনার বিজ্ঞাপন পর্যালোচনা করবে, অনুমোদনের পর এটি লাইভ হবে।",
+      termsAgreement: "আমি ওয়েব সাইট এর সকল শর্তাবলী মেনে চলছি এবং আমার সকল তথ্য সত্য",
       submit: "অনুমোদনের জন্য জমা দিন",
       saveChanges: "পরিবর্তন সেভ করুন",
     },

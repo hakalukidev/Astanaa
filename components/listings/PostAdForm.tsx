@@ -69,6 +69,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
   const [sellerPhone, setSellerPhone] = useState(listing?.sellerPhone ?? "");
   const [sellerWhatsapp, setSellerWhatsapp] = useState(listing?.sellerWhatsapp ?? "");
   const [tenantTypes, setTenantTypes] = useState<TenantType[]>(listing?.tenantTypes ?? []);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
 
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>(
     () =>
@@ -185,7 +186,7 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user) {
+    if (!user || !hasAcceptedTerms) {
       return;
     }
 
@@ -490,14 +491,30 @@ export default function PostAdForm({ listing }: PostAdFormProps) {
                 </p>
               ) : null}
 
-              <Button
-                type="submit"
-                className="w-full bg-green-600 hover:bg-green-700"
-                disabled={isSubmitting || isUploadingPhoto}
+              <label
+                htmlFor="termsAgreement"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700"
               >
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isEditing ? t.saveChanges : t.submit}
-              </Button>
+                <input
+                  id="termsAgreement"
+                  type="checkbox"
+                  checked={hasAcceptedTerms}
+                  onChange={(event) => setHasAcceptedTerms(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                {t.termsAgreement}
+              </label>
+
+              {hasAcceptedTerms ? (
+                <Button
+                  type="submit"
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  disabled={isSubmitting || isUploadingPhoto}
+                >
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isEditing ? t.saveChanges : t.submit}
+                </Button>
+              ) : null}
             </form>
           </CardContent>
         </Card>
