@@ -63,8 +63,10 @@ export default function PriceFilterDropdown({
   );
 
   const isActive = value.min !== null || value.max !== null;
+  // A picked preset keeps its rounded label (e.g. "৳16 K", not "৳15 K" for 15,001).
+  const selectedBand = PRICE_BANDS.find((band) => band.min === value.min && band.max === value.max);
   const buttonLabel = isActive
-    ? formatPriceBandLabel({ min: value.min, max: value.max }, labels)
+    ? formatPriceBandLabel(selectedBand ?? { min: value.min, max: value.max }, labels)
     : labels.priceFilterLabel;
 
   return (

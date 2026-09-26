@@ -298,16 +298,21 @@ export function formatListingPrice(price: number) {
   return `৳ ${price.toLocaleString("en-BD")}`;
 }
 
-/** Preset price bands (BDT) shown in the listings price filter, min/max being inclusive. */
-export type PriceBand = { min: number | null; max: number | null };
+/**
+ * Preset price bands (BDT) shown in the listings price filter, min/max being
+ * inclusive. Bands are back-to-back (each min is the previous max + 1) so no
+ * price falls through a gap; `labelMin` is the rounder number shown instead,
+ * e.g. the 15,001-30,000 band reads "৳16 K - ৳30 K".
+ */
+export type PriceBand = { min: number | null; max: number | null; labelMin?: number };
 
 export const PRICE_BANDS: PriceBand[] = [
-  { min: null, max: 50000 },
-  { min: 50000, max: 500000 },
-  { min: 500000, max: 5000000 },
-  { min: 5000000, max: 10000000 },
-  { min: 10000000, max: 50000000 },
-  { min: 50000000, max: null },
+  { min: 0, max: 15000 },
+  { min: 15001, max: 30000, labelMin: 16000 },
+  { min: 30001, max: 50000, labelMin: 31000 },
+  { min: 50001, max: 100000, labelMin: 51000 },
+  { min: 100001, max: 5000000, labelMin: 110000 },
+  { min: 5000001, max: 10000000, labelMin: 5100000 },
 ];
 
 /** Whether a listing's price falls within a price band (or a free-typed min/max range) — inclusive at both ends. */
@@ -331,7 +336,7 @@ export function formatPriceBandLabel(band: PriceBand, labels: PriceBandLabels) {
     return `${labels.priceAbovePrefix} ${formatCompactBDT(band.min)}`;
   }
   if (band.min !== null && band.max !== null) {
-    return `${formatCompactBDT(band.min)} - ${formatCompactBDT(band.max)}`;
+    return `${formatCompactBDT(band.labelMin ?? band.min)} - ${formatCompactBDT(band.max)}`;
   }
   return "";
 }
