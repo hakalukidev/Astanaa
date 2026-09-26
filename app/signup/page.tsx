@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Captcha, type CaptchaPayload } from "@/components/auth/Captcha";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,6 +31,7 @@ export default function SignUpPage() {
   const { toast } = useToast();
   const { language } = useLanguage();
   const t = translations[language].signup;
+  const tLogin = translations[language].login;
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -170,6 +172,14 @@ export default function SignUpPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <GoogleSignInButton label={tLogin.continueWithGoogle} />
+
+          <div className="my-5 flex items-center gap-3 text-xs uppercase text-gray-400">
+            <span className="h-px flex-1 bg-gray-200" />
+            {tLogin.or}
+            <span className="h-px flex-1 bg-gray-200" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">{t.fullName}</Label>

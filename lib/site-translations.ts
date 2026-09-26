@@ -252,6 +252,9 @@ export const translations = {
       noAccount: "Don't have an account?",
       signUp: "Sign up",
       forgotPassword: "Forgot password?",
+      continueWithGoogle: "Continue with Google",
+      or: "or",
+      googleError: "Google sign-in didn't work. Please try again.",
     },
     signup: {
       accountCreatedTitle: "Account created",
@@ -639,6 +642,9 @@ export const translations = {
       noAccount: "অ্যাকাউন্ট নেই?",
       signUp: "সাইন আপ করুন",
       forgotPassword: "পাসওয়ার্ড ভুলে গেছেন?",
+      continueWithGoogle: "গুগল দিয়ে চালিয়ে যান",
+      or: "অথবা",
+      googleError: "গুগল দিয়ে লগইন হয়নি। আবার চেষ্টা করুন।",
     },
     signup: {
       accountCreatedTitle: "অ্যাকাউন্ট তৈরি হয়েছে",

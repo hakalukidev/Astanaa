@@ -3,8 +3,9 @@
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // The Google callback sends people back here with ?error=... on failure.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("error")) {
+      setErrorMessage(t.googleError);
+    }
+  }, [t.googleError]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +75,14 @@ export default function LoginPage() {
           <CardDescription>{t.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
+          <GoogleSignInButton label={t.continueWithGoogle} />
+
+          <div className="my-5 flex items-center gap-3 text-xs uppercase text-gray-400">
+            <span className="h-px flex-1 bg-gray-200" />
+            {t.or}
+            <span className="h-px flex-1 bg-gray-200" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t.email}</Label>
